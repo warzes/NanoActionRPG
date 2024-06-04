@@ -32,6 +32,12 @@ int main(
 	glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
 #endif
 
+	Print("OpenGL: OpenGL device information:");
+	Print("    > Vendor:   " + std::string((const char*)glGetString(GL_VENDOR)));
+	Print("    > Renderer: " + std::string((const char*)glGetString(GL_RENDERER)));
+	Print("    > Version:  " + std::string((const char*)glGetString(GL_VERSION)));
+	Print("    > GLSL:     " + std::string((const char*)glGetString(GL_SHADING_LANGUAGE_VERSION)));
+
 #pragma region ImGui
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -119,13 +125,13 @@ int main(
 			if (fpsCounterFloat >= 1)
 			{
 				fpsCounterFloat -= 1;
-				currentFps = currentFpsCounter;
-				currentMill = (1.f / currentFps) * 1000.f;
+				currentFps = (int)currentFpsCounter;
+				currentMill = (1.f / (float)currentFps) * 1000.f;
 				currentFpsCounter = 0;
 
 				if (recordPos < FPS_RECORD_ARR_SIZE)
 				{
-					fpsArr[recordPos] = currentFps;
+					fpsArr[recordPos] = (float)currentFps;
 					millArr[recordPos] = currentMill;
 					recordPos++;
 				}
@@ -137,7 +143,7 @@ int main(
 						millArr[i] = millArr[i + 1];
 
 					}
-					fpsArr[FPS_RECORD_ARR_SIZE - 1] = currentFps;
+					fpsArr[FPS_RECORD_ARR_SIZE - 1] = (float)currentFps;
 					millArr[FPS_RECORD_ARR_SIZE - 1] = currentMill;
 				}
 
@@ -255,7 +261,13 @@ int main(
 
 #pragma endregion
 
+#pragma region camera
+#pragma endregion
+
 #pragma region render
+
+		renderDurationProfiler.start();
+		renderDurationProfilerFine.start();
 
 		glViewport(0, 0, windowWidth, windowHeight);
 		glClearColor(0.0f, 0.2f, 0.4f, 1.0f);
@@ -263,6 +275,9 @@ int main(
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		glfwSwapBuffers(window);
+
+		renderDurationProfiler.end();
+		renderDurationProfilerFine.end();
 #pragma endregion
 	}
 
