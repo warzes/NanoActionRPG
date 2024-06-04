@@ -93,8 +93,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\3rdparty\glad\gl.c" />
-    <ClCompile Include="..\3rdparty\stb\stb.cpp" />
+    <ClCompile Include="..\3rdparty\glad\gl.c">
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">TurnOffAllWarnings</WarningLevel>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\stb\stb.cpp">
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">TurnOffAllWarnings</WarningLevel>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="NanoEngine.cpp" />
   </ItemGroup>

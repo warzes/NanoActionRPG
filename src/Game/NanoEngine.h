@@ -1,9 +1,34 @@
 #pragma once
 
+//==============================================================================
+// BASE HEADER
+//==============================================================================
+#pragma region Base Header
+
 #if defined(_MSC_VER)
 #	pragma warning(push, 3)
 //#	pragma warning(disable : 5039)
 #endif
+
+#include <cassert>
+#include <string>
+#include <random>
+#include <ratio>
+#include <algorithm>
+#include <filesystem>
+#include <chrono>
+#include <memory>
+#include <mutex>
+#include <optional>
+#include <fstream>
+#include <sstream>
+#include <variant>
+#include <queue>
+#include <array>
+#include <span>
+#include <vector>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
@@ -36,3 +61,35 @@ Left handed
 #if defined(_MSC_VER)
 #	pragma warning(pop)
 #endif
+
+#pragma endregion
+//==============================================================================
+// END BASE HEADER
+//==============================================================================
+
+//==============================================================================
+// LOG
+//==============================================================================
+#pragma region Log
+void Print(const std::string& text);
+void Warning(const std::string& text);
+void Error(const std::string& text);
+void Fatal(const std::string& text);
+#pragma endregion
+//==============================================================================
+// END LOG
+//==============================================================================
+
+
+//==============================================================================
+// Renderer3D
+//==============================================================================
+#pragma region Renderer3D
+struct Renderer3D
+{
+
+};
+#pragma endregion
+//==============================================================================
+// END Renderer3D
+//==============================================================================
