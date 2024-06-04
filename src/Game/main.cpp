@@ -1,7 +1,7 @@
 ﻿#include "NanoEngine.h"
 
 #if defined(_MSC_VER)
-//#	pragma comment( lib, "3rdparty.lib" )
+#	pragma comment( lib, "glfw3.lib" )
 #endif
 //-----------------------------------------------------------------------------
 int main(

@@ -93,10 +93,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\3rdparty\glad\gl.c" />
+    <ClCompile Include="..\3rdparty\stb\stb.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="NanoEngine.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\3rdparty\glad\gl.h" />
+    <ClInclude Include="..\3rdparty\stb\stb_image.h" />
     <ClInclude Include="NanoEngine.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

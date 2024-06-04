@@ -3,8 +3,31 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="NanoEngine.cpp" />
+    <ClCompile Include="..\3rdparty\glad\gl.c">
+      <Filter>3rdparty\glad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\stb\stb.cpp">
+      <Filter>3rdparty\stb</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="NanoEngine.h" />
+    <ClInclude Include="..\3rdparty\glad\gl.h">
+      <Filter>3rdparty\glad</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\stb\stb_image.h">
+      <Filter>3rdparty\stb</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="3rdparty">
+      <UniqueIdentifier>{f243d838-d4a4-4d52-a58f-c745363d438e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rdparty\glad">
+      <UniqueIdentifier>{91a6cf7e-5f0f-49af-9686-c2b17d660c9f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rdparty\stb">
+      <UniqueIdentifier>{ef4f9a8e-780b-4deb-8778-142d381f1cde}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>
