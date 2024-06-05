@@ -3,20 +3,6 @@
 //==============================================================================
 // GPU Config
 //==============================================================================
-#pragma region Gpu Config
-// Use discrete GPU by default.
-extern "C"
-{
-	// http://developer.download.nvidia.com/devzone/devcenter/gamegraphics/files/OptimusRenderingPolicies.pdf
-	__declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
-
-	// https://gpuopen.com/learn/amdpowerxpressrequesthighperformance/
-	__declspec(dllexport) unsigned long AmdPowerXpressRequestHighPerformance = 0x00000001;
-}
-#pragma endregion
-//==============================================================================
-// GPU Config
-//==============================================================================
 
 //==============================================================================
 // GLOBAL VARS
@@ -217,6 +203,11 @@ GLProgramPipeline::~GLProgramPipeline()
 	destroyHandle();
 }
 
+void GLProgramPipeline::Bind()
+{
+	glBindProgramPipeline(m_handle);
+}
+
 void GLProgramPipeline::createHandle()
 {
 	glCreateProgramPipelines(1, &m_handle);
@@ -326,6 +317,11 @@ GLVertexArray::~GLVertexArray()
 	destroyHandle();
 }
 
+void GLVertexArray::Bind()
+{
+	glBindVertexArray(m_handle);
+}
+
 void GLVertexArray::createHandle()
 {
 	glCreateVertexArrays(1, &m_handle);
@@ -405,6 +401,11 @@ GLTexture2D::~GLTexture2D()
 	destroyHandle();
 }
 
+void GLTexture2D::Bind(GLuint slot)
+{
+	glBindTextureUnit(slot, m_handle);
+}
+
 void GLTexture2D::createHandle()
 {
 	glCreateTextures(GL_TEXTURE_2D, 1, &m_handle);
@@ -474,6 +475,11 @@ GLTextureCube::~GLTextureCube()
 	destroyHandle();
 }
 
+void GLTextureCube::Bind(GLuint slot)
+{
+	glBindTextureUnit(slot, m_handle);
+}
+
 void GLTextureCube::createHandle()
 {
 	glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &m_handle);
@@ -499,6 +505,16 @@ GLFramebuffer::GLFramebuffer(const std::vector<GLTexture2DRef>& colors, GLTextur
 GLFramebuffer::~GLFramebuffer()
 {
 	destroyHandle();
+}
+
+void GLFramebuffer::ClearFramebuffer(GLenum buffer, GLint drawbuffer, const GLfloat* value)
+{
+	glClearNamedFramebufferfv(m_handle, buffer, drawbuffer, value);
+}
+
+void GLFramebuffer::Bind()
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, m_handle);
 }
 
 void GLFramebuffer::createHandle()
@@ -538,4 +554,58 @@ void GLFramebuffer::setTextures(const std::vector<GLTexture2DRef>& colors, GLTex
 #pragma endregion
 //==============================================================================
 // END Render Resources
+//==============================================================================
+
+//==============================================================================
+// Renderer3D
+//==============================================================================
+#pragma region Renderer3D
+
+void Renderer3D::MainFrameBuffer()
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Renderer3D::BlitFrameBuffer(
+	GLFramebufferRef readFramebuffer, GLFramebufferRef drawFramebuffer, 
+	GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, 
+	GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, 
+	GLbitfield mask, GLenum filter)
+{
+	GLuint readFramebufferId = 0;
+	GLuint drawFramebufferId = 0;
+	if (readFramebuffer) readFramebufferId = *readFramebuffer;
+	if (drawFramebuffer) drawFramebufferId = *drawFramebuffer;
+
+	glBlitNamedFramebuffer(
+		readFramebufferId,
+		drawFramebufferId,
+		srcX0, srcY0, srcX1, srcY1,
+		dstX0, dstY0, dstX1, dstY1,
+		mask, filter
+	);
+}
+
+void Renderer3D::Clear(bool color, bool depth, bool stencil)
+{
+	GLbitfield mask = 0;
+	if (color) mask |= GL_COLOR_BUFFER_BIT;
+	if (depth) mask |= GL_DEPTH_BUFFER_BIT;
+	if (stencil) mask |= GL_STENCIL_BUFFER_BIT;
+	glClear(mask);
+}
+
+void Renderer3D::SetViewport(GLint x, GLint y, GLsizei width, GLsizei height)
+{
+	glViewport(x, y, width, height);
+}
+
+void Renderer3D::SetScissor(GLint x, GLint y, GLsizei width, GLsizei height)
+{
+	glScissor(x, y, width, height);
+}
+
+#pragma endregion
+//==============================================================================
+// END Renderer3D
 //==============================================================================

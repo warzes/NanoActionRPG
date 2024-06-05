@@ -184,6 +184,8 @@ public:
 	template <typename T>
 	void SetComputeUniform(GLint location, const T& value);
 
+	void Bind();
+
 private:
 	void createHandle();
 	void destroyHandle();
@@ -197,7 +199,6 @@ private:
 
 };
 using GLProgramPipelineRef = std::shared_ptr<GLProgramPipeline>;
-
 
 // это Storage Buffer. возможно сделать возможность создания простого или такого буффера
 // https://steps3d.narod.ru/tutorials/buffer-storage-tutorial.html
@@ -248,6 +249,8 @@ public:
 	[[nodiscard]] operator GLuint() const noexcept { return m_handle; }
 	[[nodiscard]] bool IsValid() const noexcept { return m_handle != 0; }
 
+	void Bind();
+
 private:
 	void createHandle();
 	void destroyHandle();
@@ -277,6 +280,8 @@ public:
 	[[nodiscard]] operator GLuint() const noexcept { return m_handle; }
 	[[nodiscard]] bool IsValid() const noexcept { return m_handle != 0; }
 
+	void Bind(GLuint slot);
+
 private:
 	void createHandle();
 	void destroyHandle();
@@ -299,6 +304,8 @@ public:
 	[[nodiscard]] operator GLuint() const noexcept { return m_handle; }
 	[[nodiscard]] bool IsValid() const noexcept { return m_handle != 0; }
 
+	void Bind(GLuint slot);
+
 private:
 	void createHandle();
 	void destroyHandle();
@@ -319,6 +326,9 @@ public:
 	[[nodiscard]] operator GLuint() const noexcept { return m_handle; }
 	[[nodiscard]] bool IsValid() const noexcept { return m_handle != 0; }
 
+	void ClearFramebuffer(GLenum buffer, GLint drawbuffer, const GLfloat* value);
+	void Bind();
+
 private:
 	void createHandle();
 	void destroyHandle();
@@ -338,7 +348,6 @@ using GLFramebufferRef = std::shared_ptr<GLFramebuffer>;
 [[nodiscard]] inline bool IsValid(GLTextureCubeRef resource) noexcept { return resource && resource->IsValid(); }
 [[nodiscard]] inline bool IsValid(GLFramebufferRef resource) noexcept { return resource && resource->IsValid(); }
 
-
 #pragma endregion
 //==============================================================================
 // END Render Resources
@@ -348,9 +357,15 @@ using GLFramebufferRef = std::shared_ptr<GLFramebuffer>;
 // Renderer3D
 //==============================================================================
 #pragma region Renderer3D
-struct Renderer3D
+class Renderer3D final
 {
+public:
+	void MainFrameBuffer();
+	void BlitFrameBuffer(GLFramebufferRef readFramebuffer, GLFramebufferRef drawFramebuffer, GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter);
 
+	void Clear(bool color, bool depth = false, bool stencil = false);
+	void SetViewport(GLint x, GLint y, GLsizei width, GLsizei height);
+	void SetScissor(GLint x, GLint y, GLsizei width, GLsizei height);
 };
 #pragma endregion
 //==============================================================================
