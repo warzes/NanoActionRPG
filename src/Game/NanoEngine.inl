@@ -127,6 +127,27 @@ inline GLVertexArray::GLVertexArray(const std::vector<T>& vertices, const std::v
 {
 }
 
+template<typename T>
+inline GLTextureCube::GLTextureCube(GLenum internalFormat, GLenum format, GLsizei width, GLsizei height, const std::array<T*, 6>& data)
+{
+	createTexture(internalFormat.format, width, height, data);
+}
+
+template<typename T>
+inline void GLTextureCube::createTexture(GLenum internalFormat, GLenum format, GLsizei width, GLsizei height, const std::array<T*, 6>& data)
+{
+	createHandle();
+	glTextureStorage2D(m_handle, 1, internalFormat, width, height);
+	for (size_t i = 0; i < 6; i++)
+	{
+		if (data[i])
+			glTextureSubImage3D(m_handle, 0, 0, 0, (GLint)i, width, height, 1, format, GL_UNSIGNED_BYTE, data[i]);
+	}
+
+	glTextureParameteri(m_handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTextureParameteri(m_handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+}
+
 #pragma endregion
 //==============================================================================
 // END Render Resources

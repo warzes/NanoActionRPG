@@ -66,6 +66,28 @@ void Fatal(const std::string& text)
 //==============================================================================
 
 //==============================================================================
+// Render Core
+//==============================================================================
+#pragma region Render Core
+
+const std::pair<GLenum, GLenum> STBImageToOpenGLFormat(int comp)
+{
+	switch (comp)
+	{
+	case STBI_rgb_alpha:  return std::make_pair<GLenum, GLenum>(GL_RGBA8, GL_RGBA);
+	case STBI_rgb:        return std::make_pair<GLenum, GLenum>(GL_RGB8, GL_RGB);
+	case STBI_grey:       return std::make_pair<GLenum, GLenum>(GL_R8, GL_RED);
+	case STBI_grey_alpha: return std::make_pair<GLenum, GLenum>(GL_RG8, GL_RG);
+	default: Fatal("invalid format"); return std::make_pair<GLenum, GLenum>(GL_RGBA8, GL_RGBA);
+	}
+}
+
+#pragma endregion
+//==============================================================================
+// END Render Core
+//==============================================================================
+
+//==============================================================================
 // Render Resources
 //==============================================================================
 #pragma region Render Resources
@@ -343,6 +365,172 @@ void GLVertexArray::setIndexBuffer(GLBufferRef ibo, IndexFormat indexFormat)
 	glVertexArrayElementBuffer(m_handle, *ibo);
 	m_ibo = ibo;
 	m_indexFormat = indexFormat;
+}
+
+#pragma endregion
+
+#pragma region GLTexture2D
+
+GLTexture2D::GLTexture2D(GLenum internalFormat, GLenum format, GLsizei width, GLsizei height, void* data, GLint filter, GLint repeat, bool generateMipMaps)
+	: GLTexture2D(internalFormat, format, GL_UNSIGNED_BYTE, width, height, data, filter, repeat, generateMipMaps)
+{
+}
+
+GLTexture2D::GLTexture2D(GLenum internalFormat, GLenum format, GLenum dataType, GLsizei width, GLsizei height, void* data, GLint filter, GLint repeat, bool generateMipMaps)
+{
+	createHandle();
+	createTexture(internalFormat, format, dataType, width, height, data, filter, repeat, generateMipMaps);
+}
+
+GLTexture2D::GLTexture2D(std::string_view filepath, int comp, bool generateMipMaps)
+{
+	if (!std::filesystem::exists(filepath.data()))
+	{
+		Error("File '" + std::string(filepath.data()) + "' does not exist.");
+		return;
+	}
+
+	int w, h, c;
+	const auto data = stbi_load(filepath.data(), &w, &h, &c, comp);
+
+	const auto [internalFormat, format] = STBImageToOpenGLFormat((comp));
+
+	createHandle();
+	createTexture(internalFormat, format, GL_UNSIGNED_BYTE, w, h, data, GL_LINEAR, GL_REPEAT, generateMipMaps);
+	stbi_image_free(data);
+}
+
+GLTexture2D::~GLTexture2D()
+{
+	destroyHandle();
+}
+
+void GLTexture2D::createHandle()
+{
+	glCreateTextures(GL_TEXTURE_2D, 1, &m_handle);
+}
+
+void GLTexture2D::destroyHandle()
+{
+	if (m_handle != 0)
+		glDeleteTextures(1, &m_handle);
+	m_handle = 0;
+}
+
+void GLTexture2D::createTexture(GLenum internalFormat, GLenum format, GLenum dataType, GLsizei width, GLsizei height, void* data, GLint filter, GLint repeat, bool generateMipMaps)
+{
+	int levels = 1;
+	if (generateMipMaps)
+		levels = 1 + (int)std::floor(std::log2(std::min(width, height)));
+
+	glTextureStorage2D(m_handle, levels, internalFormat, width, height);
+
+	if (generateMipMaps)
+	{
+		if (filter == GL_LINEAR)
+			glTextureParameteri(m_handle, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		else if (filter == GL_NEAREST)
+			glTextureParameteri(m_handle, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+		else
+			Fatal("Unsupported filter");
+	}
+	else
+		glTextureParameteri(m_handle, GL_TEXTURE_MIN_FILTER, filter);
+
+	glTextureParameteri(m_handle, GL_TEXTURE_MAG_FILTER, filter);
+
+	glTextureParameteri(m_handle, GL_TEXTURE_WRAP_S, repeat);
+	glTextureParameteri(m_handle, GL_TEXTURE_WRAP_T, repeat);
+	glTextureParameteri(m_handle, GL_TEXTURE_WRAP_R, repeat);
+
+	if (data)
+		glTextureSubImage2D(m_handle, 0, 0, 0, width, height, format, dataType, data);
+
+	if (generateMipMaps)
+		glGenerateTextureMipmap(m_handle);
+}
+
+#pragma endregion
+
+#pragma region GLTextureCube
+
+GLTextureCube::GLTextureCube(const std::array<std::string_view, 6>& filepath, int comp)
+{
+	int x, y, c;
+	std::array<stbi_uc*, 6> faces;
+
+	const auto [internalFormat, format] = STBImageToOpenGLFormat(comp);
+	for (size_t i = 0; i < 6; i++)
+		faces[i] = stbi_load(filepath[i].data(), &x, &y, &c, comp);
+
+	createHandle();
+	createTexture(internalFormat, format, x, y, faces);
+	for (size_t i = 0; i < 6; i++)
+		stbi_image_free(faces[i]);
+}
+
+GLTextureCube::~GLTextureCube()
+{
+	destroyHandle();
+}
+
+void GLTextureCube::createHandle()
+{
+	glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &m_handle);
+}
+
+void GLTextureCube::destroyHandle()
+{
+	if (m_handle != 0)
+		glDeleteTextures(1, &m_handle);
+	m_handle = 0;
+}
+
+#pragma endregion
+
+#pragma region GLFramebuffer
+
+GLFramebuffer::GLFramebuffer(const std::vector<GLTexture2DRef>& colors, GLTexture2DRef depth)
+{
+	createHandle();
+	setTextures(colors, depth);
+}
+
+GLFramebuffer::~GLFramebuffer()
+{
+	destroyHandle();
+}
+
+void GLFramebuffer::createHandle()
+{
+	glCreateFramebuffers(1, &m_handle);
+}
+
+void GLFramebuffer::destroyHandle()
+{
+	if (m_handle != 0)
+		glDeleteFramebuffers(1, &m_handle);
+	m_handle = 0;
+	m_colorTextures.clear();
+	m_depthTexture.reset();
+}
+
+void GLFramebuffer::setTextures(const std::vector<GLTexture2DRef>& colors, GLTexture2DRef depth)
+{
+	for (size_t i = 0; i < colors.size(); i++)
+		glNamedFramebufferTexture(m_handle, GL_COLOR_ATTACHMENT0 + (GLenum)i, *colors[i], 0);
+
+	std::array<GLenum, 32> drawBuffs{};
+	for (size_t i = 0; i < colors.size(); i++)
+		drawBuffs[i] = GL_COLOR_ATTACHMENT0 + (GLenum)i;
+
+	glNamedFramebufferDrawBuffers(m_handle, (GLsizei)colors.size(), drawBuffs.data());
+
+	if (depth)
+		glNamedFramebufferTexture(m_handle, GL_DEPTH_ATTACHMENT, *depth, 0);
+
+	if (glCheckNamedFramebufferStatus(m_handle, GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		Fatal("incomplete framebuffer");
 }
 
 #pragma endregion

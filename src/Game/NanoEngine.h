@@ -8,7 +8,7 @@
 #if defined(_MSC_VER)
 #	pragma warning(disable : 4514)
 #	pragma warning(disable : 4820)
-
+#	pragma warning(disable : 5045)
 #	pragma warning(push, 3)
 #	pragma warning(disable : 4005)
 #	pragma warning(disable : 4244)
@@ -117,6 +117,8 @@ constexpr std::pair<GLint, GLenum> TypeToSizeEnum();
 
 template<typename T>
 constexpr inline AttribFormat CreateAttribFormat(GLuint attribIndex, GLuint relativeOffset);
+
+const std::pair<GLenum, GLenum> STBImageToOpenGLFormat(int comp);
 
 #pragma endregion
 //==============================================================================
@@ -260,16 +262,81 @@ private:
 	size_t m_vertexSize = 0;
 	IndexFormat m_indexFormat = IndexFormat::UInt32;
 };
-
 using GLVertexArrayRef = std::shared_ptr<GLVertexArray>;
+
+class GLTexture2D final
+{
+public:
+	GLTexture2D() = delete;
+	GLTexture2D(GLenum internalFormat, GLenum format, GLsizei width, GLsizei height, void* data = nullptr, GLint filter = GL_LINEAR, GLint repeat = GL_REPEAT, bool generateMipMaps = false);
+	GLTexture2D(GLenum internalFormat, GLenum format, GLenum dataType, GLsizei width, GLsizei height, void* data = nullptr, GLint filter = GL_LINEAR, GLint repeat = GL_REPEAT, bool generateMipMaps = false);
+	GLTexture2D(std::string_view filepath, int comp = STBI_rgb_alpha, bool generateMipMaps = false);
+
+	~GLTexture2D();
+
+	[[nodiscard]] operator GLuint() const noexcept { return m_handle; }
+	[[nodiscard]] bool IsValid() const noexcept { return m_handle != 0; }
+
+private:
+	void createHandle();
+	void destroyHandle();
+	void createTexture(GLenum internalFormat, GLenum format, GLenum dataType, GLsizei width, GLsizei height, void* data = nullptr, GLint filter = GL_LINEAR, GLint repeat = GL_REPEAT, bool generateMipMaps = false);
+
+	GLuint m_handle = 0;
+};
+using GLTexture2DRef = std::shared_ptr<GLTexture2D>;
+
+class GLTextureCube final
+{
+public:
+	GLTextureCube() = delete;
+	template<typename T = nullptr_t>
+	GLTextureCube(GLenum internalFormat, GLenum format, GLsizei width, GLsizei height, const std::array<T*, 6>& data);
+	GLTextureCube(const std::array<std::string_view, 6>& filepath, int comp = STBI_rgb_alpha);
+
+	~GLTextureCube();
+
+	[[nodiscard]] operator GLuint() const noexcept { return m_handle; }
+	[[nodiscard]] bool IsValid() const noexcept { return m_handle != 0; }
+
+private:
+	void createHandle();
+	void destroyHandle();
+	template<typename T = nullptr_t>
+	void createTexture(GLenum internalFormat, GLenum format, GLsizei width, GLsizei height, const std::array<T*, 6>& data);
+
+	GLuint m_handle = 0;
+};
+using GLTextureCubeRef = std::shared_ptr<GLTextureCube>;
+
+class GLFramebuffer final
+{
+public:
+	GLFramebuffer() = delete;
+	GLFramebuffer(const std::vector<GLTexture2DRef>& colors, GLTexture2DRef depth = nullptr);
+	~GLFramebuffer();
+
+	[[nodiscard]] operator GLuint() const noexcept { return m_handle; }
+	[[nodiscard]] bool IsValid() const noexcept { return m_handle != 0; }
+
+private:
+	void createHandle();
+	void destroyHandle();
+	void setTextures(const std::vector<GLTexture2DRef>& colors, GLTexture2DRef depth);
+
+	GLuint m_handle = 0;
+	std::vector<GLTexture2DRef> m_colorTextures;
+	GLTexture2DRef m_depthTexture = nullptr;
+};
+using GLFramebufferRef = std::shared_ptr<GLFramebuffer>;
 
 [[nodiscard]] inline bool IsValid(GLSeparableShaderProgramRef resource) noexcept { return resource && resource->IsValid(); }
 [[nodiscard]] inline bool IsValid(GLProgramPipelineRef resource) noexcept { return resource && resource->IsValid(); }
 [[nodiscard]] inline bool IsValid(GLBufferRef resource) noexcept { return resource && resource->IsValid(); }
 [[nodiscard]] inline bool IsValid(GLVertexArrayRef resource) noexcept { return resource && resource->IsValid(); }
-//[[nodiscard]] inline bool IsValid(GLGeometryRef resource) noexcept { return resource && IsValid(resource->vao); }
-//[[nodiscard]] inline bool IsValid(GLTextureRef resource) noexcept { return resource && resource->IsValid(); }
-//[[nodiscard]] inline bool IsValid(GLFramebufferRef resource) noexcept { return resource && resource->IsValid(); }
+[[nodiscard]] inline bool IsValid(GLTexture2DRef resource) noexcept { return resource && resource->IsValid(); }
+[[nodiscard]] inline bool IsValid(GLTextureCubeRef resource) noexcept { return resource && resource->IsValid(); }
+[[nodiscard]] inline bool IsValid(GLFramebufferRef resource) noexcept { return resource && resource->IsValid(); }
 
 
 #pragma endregion

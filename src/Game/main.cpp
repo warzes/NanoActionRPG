@@ -107,10 +107,6 @@ int main(
 		if (timeFpsCount > 1)
 		{
 			timeFpsCount -= 1;
-			std::string name = std::to_string(fpsCount);
-			name = "fps: " + name;
-			glfwSetWindowTitle(window, name.c_str());
-
 			fpsCount = 0;
 		}
 #pragma endregion
