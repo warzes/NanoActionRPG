@@ -1,4 +1,4 @@
-#include "NanoEngine.h"
+﻿#include "NanoEngine.h"
 
 //==============================================================================
 // GPU Config
@@ -170,6 +170,26 @@ GLProgramPipeline::GLProgramPipeline(GLSeparableShaderProgramRef computeShader)
 	setSeparableShaders(nullptr, nullptr, nullptr, computeShader);
 }
 
+GLProgramPipeline::GLProgramPipeline(std::string_view vertexShaderCode, std::string_view fragmentShaderCode) 
+	: GLProgramPipeline(
+		std::make_shared<GLSeparableShaderProgram>((GLenum)GL_VERTEX_SHADER, vertexShaderCode),
+		std::make_shared<GLSeparableShaderProgram>((GLenum)GL_FRAGMENT_SHADER, fragmentShaderCode))
+{
+}
+
+GLProgramPipeline::GLProgramPipeline(std::string_view vertexShaderCode, std::string_view geometryShaderCode, std::string_view fragmentShaderCode)
+	: GLProgramPipeline(
+		std::make_shared<GLSeparableShaderProgram>((GLenum)GL_VERTEX_SHADER, vertexShaderCode),
+		std::make_shared<GLSeparableShaderProgram>((GLenum)GL_GEOMETRY_SHADER, geometryShaderCode),
+		std::make_shared<GLSeparableShaderProgram>((GLenum)GL_FRAGMENT_SHADER, fragmentShaderCode))
+{
+}
+
+GLProgramPipeline::GLProgramPipeline(std::string_view computeShaderCode)
+	: GLProgramPipeline(std::make_shared<GLSeparableShaderProgram>((GLenum)GL_COMPUTE_SHADER, computeShaderCode))
+{
+}
+
 GLProgramPipeline::~GLProgramPipeline()
 {
 	destroyHandle();
@@ -214,6 +234,115 @@ void GLProgramPipeline::setSeparableShaders(GLSeparableShaderProgramRef vertexSh
 		glUseProgramStages(m_handle, GL_COMPUTE_SHADER_BIT, *computeShader);
 		m_computeShader = computeShader;
 	}
+}
+
+#pragma endregion
+
+#pragma region GLBuffer
+
+GLBuffer::~GLBuffer()
+{
+	destroyHandle();
+}
+
+void* GLBuffer::MapRange(GLintptr offset, GLsizeiptr size, GLbitfield accessFlags)
+{
+	assert(m_handle);
+	return glMapNamedBufferRange(m_handle, offset, size, accessFlags);
+}
+
+void* GLBuffer::Map(GLbitfield access)
+{
+	assert(m_handle);
+	return glMapNamedBuffer(m_handle, access);
+}
+
+void GLBuffer::FlushMappedRange(GLintptr offset, GLsizeiptr size)
+{
+	assert(m_handle);
+	glFlushMappedNamedBufferRange(m_handle, offset, size);
+}
+
+void GLBuffer::Unmap()
+{
+	assert(m_handle);
+	glUnmapNamedBuffer(m_handle);
+}
+
+void GLBuffer::createHandle()
+{
+	glCreateBuffers(1, &m_handle);
+}
+
+void GLBuffer::destroyHandle()
+{
+	if (m_handle != 0)
+		glDeleteBuffers(1, &m_handle);
+	m_handle = 0;
+}
+
+#pragma endregion
+
+#pragma region GLVertexArray
+
+GLVertexArray::GLVertexArray(GLBufferRef vbo, size_t vertexSize, const std::vector<AttribFormat>& attribFormats)
+	: GLVertexArray(vbo, vertexSize, nullptr, {}, attribFormats)
+{
+}
+
+GLVertexArray::GLVertexArray(GLBufferRef vbo, size_t vertexSize, GLBufferRef ibo, IndexFormat indexFormat, const std::vector<AttribFormat>& attribFormats)
+{
+	createHandle();
+	setAttribFormats(attribFormats);
+
+	if (::IsValid(vbo) && vertexSize) setVertexBuffer(vbo, vertexSize);
+	if (::IsValid(ibo)) setIndexBuffer(ibo, indexFormat);
+}
+
+GLVertexArray::~GLVertexArray()
+{
+	destroyHandle();
+}
+
+void GLVertexArray::createHandle()
+{
+	glCreateVertexArrays(1, &m_handle);
+}
+
+void GLVertexArray::destroyHandle()
+{
+	if (m_handle != 0)
+		glDeleteVertexArrays(1, &m_handle);
+	m_handle = 0;
+}
+
+void GLVertexArray::setAttribFormats(const std::vector<AttribFormat>& attribFormats)
+{
+	for (const auto& format : attribFormats)
+	{
+		glEnableVertexArrayAttrib(m_handle, format.attribIndex);
+		glVertexArrayAttribFormat(m_handle, format.attribIndex, format.size, format.type, GL_FALSE, format.relativeOffset);
+		glVertexArrayAttribBinding(m_handle, format.attribIndex, 0);
+	}
+}
+
+void GLVertexArray::setVertexBuffer(GLBufferRef vbo, size_t vertexSize)
+{
+	setVertexBuffer(0, vbo, 0, vertexSize);
+}
+
+void GLVertexArray::setVertexBuffer(GLuint bindingIndex, GLBufferRef vbo, GLintptr offset, size_t stride)
+{
+	glVertexArrayVertexBuffer(m_handle, bindingIndex, *vbo, offset, (GLsizei)stride);
+	m_vertexSize = stride; // TODO; это правильно?
+	m_vbo = vbo;
+}
+
+void GLVertexArray::setIndexBuffer(GLBufferRef ibo, IndexFormat indexFormat)
+{
+	glVertexArrayElementBuffer(m_handle, *ibo);
+	m_ibo = ibo;
+	m_indexFormat = indexFormat;
 }
 
 #pragma endregion

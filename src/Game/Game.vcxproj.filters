@@ -78,4 +78,7 @@
       <UniqueIdentifier>{8030fdaa-9180-4454-8d9b-2d494c2d45f0}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="NanoEngine.inl" />
+  </ItemGroup>
 </Project>
