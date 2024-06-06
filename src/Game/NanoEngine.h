@@ -389,8 +389,36 @@ public:
 //==============================================================================
 #pragma region RenderWorld
 
-#pragma endregion
+struct MeshVertex final
+{
+	glm::vec3 position;
+	glm::vec3 color;
+	glm::vec3 normal;
+	glm::vec2 texCoords;
+	glm::vec3 tangent;
+};
 
+struct MaterialTexture final
+{
+	GLTexture2DRef texture = nullptr;
+	std::string path;
+};
+
+struct MaterialProperties final
+{
+	glm::vec3 amblientColor;
+	glm::vec3 diffuseColor;
+	glm::vec3 specularColor;
+	float shininess = 0.0f;
+	float refracti = 0.0f;
+};
+
+class Mesh final
+{
+
+};
+
+#pragma endregion
 //==============================================================================
 // END RenderWorld
 //==============================================================================
@@ -416,7 +444,6 @@ namespace Window
 }
 
 #pragma endregion
-
 //==============================================================================
 // END Window
 //==============================================================================
@@ -455,7 +482,6 @@ namespace Mouse
 }
 
 #pragma endregion
-
 //==============================================================================
 // END Input
 //==============================================================================
