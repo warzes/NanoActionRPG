@@ -2,6 +2,7 @@
 //-----------------------------------------------------------------------------
 #if defined(_MSC_VER)
 #	pragma comment( lib, "glfw3.lib" )
+#	pragma comment( lib, "assimp-vc143-mt.lib" )
 #endif
 //-----------------------------------------------------------------------------
 // Use discrete GPU by default.
@@ -60,20 +61,7 @@ int main(
 	[[maybe_unused]] int   argc,
 	[[maybe_unused]] char* argv[])
 {
-	glfwInit();
-	glfwWindowHint(GLFW_SAMPLES, 1);
-#if defined(_DEBUG)
-	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
-#endif
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-	GLFWwindow* window = glfwCreateWindow(1024, 768, "Game", nullptr, nullptr);
-	glfwMakeContextCurrent(window);
-	glfwSwapInterval(0);
-
-	gladLoadGL(glfwGetProcAddress);
+	Window::Create("Game", 1024, 768);
 
 	Renderer3D renderer;
 
@@ -106,7 +94,7 @@ int main(
 
 	//ImGuiStyle& style = ImGui::GetStyle();
 
-	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplGlfw_InitForOpenGL(Window::GetWindow(), true);
 	ImGui_ImplOpenGL3_Init("#version 330");
 #pragma endregion
 
@@ -125,29 +113,14 @@ int main(
 	float deltaTimeArr[DELTA_TIME_ARR_SIZE] = { };
 #pragma endregion
 
-#pragma region windowSize
-	int windowWidth = 0;
-	int windowHeight = 0;
-#pragma endregion
-
 	PL::ImguiProfiler renderDurationProfiler("Render duration (ms) (avg over one sec)", 0, 30);
 	PL::ImguiProfiler renderDurationProfilerFine("Render duration (ms) ", 0, 30);
 	PL::ImguiProfiler imguiRenderDuration("Imgui render duration (ms) ", 0, 30);
 	PL::ImguiProfiler swapBuffersDuration("Swap buffers duration (ms) ", 0, 30);
 
-	while (!glfwWindowShouldClose(window))
+	while (!Window::ShouldClose())
 	{
-#pragma region window event
-		glfwPollEvents();
-#pragma endregion
-
-#pragma region window metrics
-		//glfwGetWindowSize(window, &windowWidth, &windowHeight);
-		glfwGetFramebufferSize(window, &windowWidth, &windowHeight);
-
-		windowWidth = std::max(windowWidth, 1);
-		windowHeight = std::max(windowHeight, 1);
-#pragma endregion
+		Window::Update();
 
 #pragma region deltatime
 		int timeEnd = clock();
@@ -317,12 +290,12 @@ int main(
 		renderDurationProfiler.start();
 		renderDurationProfilerFine.start();
 
-		glViewport(0, 0, windowWidth, windowHeight);
+		glViewport(0, 0, Window::GetWidth(), Window::GetHeight());
 		glClearColor(0.0f, 0.2f, 0.4f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-		glfwSwapBuffers(window);
+		Window::Swap();
 
 		renderDurationProfiler.end();
 		renderDurationProfilerFine.end();
@@ -332,7 +305,6 @@ int main(
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
-	glfwDestroyWindow(window);
-	glfwTerminate();
+	Window::Destroy();
 }
 //-----------------------------------------------------------------------------

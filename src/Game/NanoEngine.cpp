@@ -12,6 +12,10 @@ namespace
 {
 	struct
 	{
+		GLFWwindow* window = nullptr;
+		int windowWidth = 0;
+		int windowHeight = 0;
+		bool IsResize = false;
 		bool IsEnd = false;
 	} Engine;
 }
@@ -608,4 +612,144 @@ void Renderer3D::SetScissor(GLint x, GLint y, GLsizei width, GLsizei height)
 #pragma endregion
 //==============================================================================
 // END Renderer3D
+//==============================================================================
+
+//==============================================================================
+// RenderWorld
+//==============================================================================
+#pragma region RenderWorld
+
+#pragma endregion
+
+//==============================================================================
+// END RenderWorld
+//==============================================================================
+
+//==============================================================================
+// Window
+//==============================================================================
+#pragma region Window
+
+bool Window::Create(const char* title, int width, int height)
+{
+	glfwInit();
+	glfwWindowHint(GLFW_SAMPLES, 1);
+#if defined(_DEBUG)
+	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
+#endif
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+	Engine.window = glfwCreateWindow(width, height, title, nullptr, nullptr);
+	glfwMakeContextCurrent(Engine.window);
+	glfwSwapInterval(0);
+
+	glfwSetInputMode(Engine.window, GLFW_STICKY_KEYS, GLFW_TRUE); // сохраняет событие клавиши до его опроса через glfwGetKey()
+	glfwSetInputMode(Engine.window, GLFW_STICKY_MOUSE_BUTTONS, GLFW_TRUE); // сохраняет событие кнопки мыши до его опроса через glfwGetMouseButton()
+
+	gladLoadGL(glfwGetProcAddress);
+
+	return true;
+}
+
+void Window::Destroy()
+{
+	glfwDestroyWindow(Engine.window);
+	glfwTerminate();
+}
+
+bool Window::ShouldClose()
+{
+	return glfwWindowShouldClose(Engine.window);
+}
+
+void Window::Update()
+{
+	Engine.IsResize = false;
+	glfwPollEvents();
+
+	int width = 0;
+	int height = 0;
+	glfwGetFramebufferSize(Engine.window, &width, &height);
+
+	if (Engine.windowWidth != width || Engine.windowHeight != height)
+		Engine.IsResize = true;
+
+	Engine.windowWidth = std::max(width, 1);
+	Engine.windowHeight = std::max(height, 1);
+}
+
+void Window::Swap()
+{
+	glfwSwapBuffers(Engine.window);
+}
+
+GLFWwindow* Window::GetWindow()
+{
+	return Engine.window;
+}
+
+int Window::GetWidth()
+{
+	return Engine.windowWidth;
+}
+
+int Window::GetHeight()
+{
+	return Engine.windowHeight;
+}
+
+bool Window::IsResize()
+{
+	return false;
+}
+
+#pragma endregion
+
+//==============================================================================
+// END Window
+//==============================================================================
+
+//==============================================================================
+// Input
+//==============================================================================
+#pragma region Input
+
+bool Keyboard::IsPressed(int key)
+{
+	return glfwGetKey(Engine.window, key) == GLFW_PRESS;
+}
+
+bool Mouse::IsPressed(Button button)
+{
+	return glfwGetMouseButton(Engine.window, static_cast<int>(button)) == GLFW_PRESS;
+}
+
+glm::ivec2 Mouse::GetPosition()
+{
+	double xpos, ypos;
+	glfwGetCursorPos(Engine.window, &xpos, &ypos);
+	return { xpos, ypos };
+}
+
+void Mouse::SetPosition(const glm::ivec2& position)
+{
+	glfwSetCursorPos(Engine.window, position.x, position.y);
+}
+
+void Mouse::SetCursorMode(CursorMode mode)
+{
+	int mod = GLFW_CURSOR_NORMAL;
+
+	if (mode == CursorMode::Disabled) mod = GLFW_CURSOR_DISABLED;
+	else if (mode == CursorMode::Disabled) mod = GLFW_CURSOR_HIDDEN;
+
+	glfwSetInputMode(Engine.window, GLFW_CURSOR, mod);
+}
+
+#pragma endregion
+
+//==============================================================================
+// END Input
 //==============================================================================

@@ -12,8 +12,10 @@
 #	pragma warning(push, 3)
 #	pragma warning(disable : 4005)
 #	pragma warning(disable : 4244)
+#	pragma warning(disable : 4619)
 #	pragma warning(disable : 4668)
 #	pragma warning(disable : 5039)
+#	pragma warning(disable : 5219)
 #endif
 
 #include <cassert>
@@ -69,6 +71,16 @@ Left handed
 #include <glm/gtx/transform.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtx/normal.hpp>
+
+#include <assimp/BaseImporter.h>
+#include <assimp/Importer.hpp>
+#include <assimp/mesh.h>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+#include <assimp/ai_assert.h>
+#include <assimp/texture.h>
+#include <assimp/Vertex.h>
+#include <assimp/Bitmap.h>
 
 #if defined(_MSC_VER)
 #	pragma warning(pop)
@@ -371,6 +383,83 @@ public:
 //==============================================================================
 // END Renderer3D
 //==============================================================================
+
+//==============================================================================
+// RenderWorld
+//==============================================================================
+#pragma region RenderWorld
+
+#pragma endregion
+
+//==============================================================================
+// END RenderWorld
+//==============================================================================
+
+//==============================================================================
+// Window
+//==============================================================================
+#pragma region Window
+
+namespace Window
+{
+	bool Create(const char* title, int width, int height);
+	void Destroy();
+
+	bool ShouldClose();
+	void Update();
+	void Swap();
+
+	GLFWwindow* GetWindow();
+	int GetWidth();
+	int GetHeight();
+	bool IsResize();
+}
+
+#pragma endregion
+
+//==============================================================================
+// END Window
+//==============================================================================
+
+//==============================================================================
+// Input
+//==============================================================================
+#pragma region Input
+
+namespace Keyboard
+{
+	bool IsPressed(int key);
+}
+
+namespace Mouse
+{
+	enum class Button
+	{
+		Left = GLFW_MOUSE_BUTTON_LEFT,
+		Right = GLFW_MOUSE_BUTTON_RIGHT,
+		Middle = GLFW_MOUSE_BUTTON_MIDDLE,
+	};
+
+	enum class CursorMode
+	{
+		Disabled,
+		Hidden,
+		Normal
+	};
+
+	bool IsPressed(Button button);
+	glm::ivec2 GetPosition();
+	void SetPosition(const glm::ivec2& position);
+
+	void SetCursorMode(CursorMode mode);
+}
+
+#pragma endregion
+
+//==============================================================================
+// END Input
+//==============================================================================
+
 
 //==============================================================================
 // include inline header
