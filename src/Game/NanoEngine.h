@@ -87,9 +87,6 @@ Left handed
 #endif
 
 #pragma endregion
-//==============================================================================
-// END BASE HEADER
-//==============================================================================
 
 //==============================================================================
 // LOG
@@ -100,9 +97,6 @@ void Warning(const std::string& text);
 void Error(const std::string& text);
 void Fatal(const std::string& text);
 #pragma endregion
-//==============================================================================
-// END LOG
-//==============================================================================
 
 //==============================================================================
 // Render Core
@@ -133,9 +127,6 @@ constexpr inline AttribFormat CreateAttribFormat(GLuint attribIndex, GLuint rela
 const std::pair<GLenum, GLenum> STBImageToOpenGLFormat(int comp);
 
 #pragma endregion
-//==============================================================================
-// END Render Core
-//==============================================================================
 
 //==============================================================================
 // Render Resources
@@ -361,33 +352,46 @@ using GLFramebufferRef = std::shared_ptr<GLFramebuffer>;
 [[nodiscard]] inline bool IsValid(GLFramebufferRef resource) noexcept { return resource && resource->IsValid(); }
 
 #pragma endregion
-//==============================================================================
-// END Render Resources
-//==============================================================================
 
 //==============================================================================
-// Renderer3D
+// Renderer
 //==============================================================================
-#pragma region Renderer3D
-class Renderer3D final
+#pragma region Renderer
+
+namespace Renderer
 {
-public:
+	bool Init();
+	void Close();
+
 	void MainFrameBuffer();
 	void BlitFrameBuffer(GLFramebufferRef readFramebuffer, GLFramebufferRef drawFramebuffer, GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter);
 
 	void Clear(bool color, bool depth = false, bool stencil = false);
 	void SetViewport(GLint x, GLint y, GLsizei width, GLsizei height);
 	void SetScissor(GLint x, GLint y, GLsizei width, GLsizei height);
-};
+}
+
 #pragma endregion
-//==============================================================================
-// END Renderer3D
-//==============================================================================
 
 //==============================================================================
 // RenderWorld
 //==============================================================================
 #pragma region RenderWorld
+
+struct MaterialTexture final
+{
+	GLTexture2DRef texture = nullptr;
+	std::string path;
+};
+
+struct MaterialProperties final
+{
+	glm::vec3 ambientColor;
+	glm::vec3 diffuseColor;
+	glm::vec3 specularColor;
+	float shininess = 0.0f;
+	float refracti = 0.0f;
+};
 
 struct MeshVertex final
 {
@@ -398,30 +402,34 @@ struct MeshVertex final
 	glm::vec3 tangent;
 };
 
-struct MaterialTexture final
-{
-	GLTexture2DRef texture = nullptr;
-	std::string path;
-};
-
-struct MaterialProperties final
-{
-	glm::vec3 amblientColor;
-	glm::vec3 diffuseColor;
-	glm::vec3 specularColor;
-	float shininess = 0.0f;
-	float refracti = 0.0f;
-};
-
 class Mesh final
 {
 
 };
 
+class Camera final
+{
+public:
+	void SetPosition(const glm::vec3& pos);
+	void SetPosition(const glm::vec3& pos, const glm::vec3& forwardLook);
+	void MoveBy(float distance); // move front/back
+	void StrafeBy(float distance); // move left/right
+	void RotateLeftRight(float angleInDegrees); // rotate left/right
+	void RotateUpDown(float angleInDegrees); // rotate up/down
+
+	glm::vec3 GetNormalizedViewVector() const;
+	glm::mat4 GetViewMatrix() const;
+
+	glm::vec3 GetForward() const;
+	glm::vec3 GetRight() const;
+	glm::vec3 GetUp() const;
+
+	glm::vec3 position = glm::vec3(0.0f);
+	glm::vec3 target = glm::vec3(0.0f, 0.0f, 1.0f);
+	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+};
+
 #pragma endregion
-//==============================================================================
-// END RenderWorld
-//==============================================================================
 
 //==============================================================================
 // Window
@@ -444,9 +452,6 @@ namespace Window
 }
 
 #pragma endregion
-//==============================================================================
-// END Window
-//==============================================================================
 
 //==============================================================================
 // Input
@@ -482,9 +487,21 @@ namespace Mouse
 }
 
 #pragma endregion
+
 //==============================================================================
-// END Input
+// IMGUI
 //==============================================================================
+#pragma region IMGUI
+
+namespace IMGUI
+{
+	bool Init();
+	void Close();
+
+	void Update();
+	void Draw();
+}
+#pragma endregion
 
 
 //==============================================================================

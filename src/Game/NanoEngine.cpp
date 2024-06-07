@@ -1,8 +1,29 @@
 ﻿#include "NanoEngine.h"
 
 //==============================================================================
+// Lib
+//==============================================================================
+#pragma region Lib
+#if defined(_MSC_VER)
+#	pragma comment( lib, "glfw3.lib" )
+#	pragma comment( lib, "assimp-vc143-mt.lib" )
+#endif
+#pragma endregion
+
+//==============================================================================
 // GPU Config
 //==============================================================================
+#pragma region GPU Config
+// Use discrete GPU by default.
+extern "C"
+{
+	// http://developer.download.nvidia.com/devzone/devcenter/gamegraphics/files/OptimusRenderingPolicies.pdf
+	__declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+
+	// https://gpuopen.com/learn/amdpowerxpressrequesthighperformance/
+	__declspec(dllexport) unsigned long AmdPowerXpressRequestHighPerformance = 0x00000001;
+}
+#pragma endregion
 
 //==============================================================================
 // GLOBAL VARS
@@ -25,9 +46,6 @@ void ResetGlobalVars()
 	Engine.IsEnd = false;
 }
 #pragma endregion
-//==============================================================================
-// END GLOBAL VARS
-//==============================================================================
 
 //==============================================================================
 // LOG
@@ -51,9 +69,6 @@ void Fatal(const std::string& text)
 	Engine.IsEnd = true;
 }
 #pragma endregion
-//==============================================================================
-// END LOG
-//==============================================================================
 
 //==============================================================================
 // Render Core
@@ -73,9 +88,6 @@ const std::pair<GLenum, GLenum> STBImageToOpenGLFormat(int comp)
 }
 
 #pragma endregion
-//==============================================================================
-// END Render Core
-//==============================================================================
 
 //==============================================================================
 // Render Resources
@@ -556,21 +568,82 @@ void GLFramebuffer::setTextures(const std::vector<GLTexture2DRef>& colors, GLTex
 #pragma endregion
 
 #pragma endregion
-//==============================================================================
-// END Render Resources
-//==============================================================================
 
 //==============================================================================
-// Renderer3D
+// Renderer
 //==============================================================================
-#pragma region Renderer3D
+#pragma region Renderer
 
-void Renderer3D::MainFrameBuffer()
+#if defined(_DEBUG)
+void APIENTRY glDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei /*length*/, const GLchar* message, const void* /*user_param*/) noexcept
+{
+	// ignore non-significant error/warning codes
+	if (id == 131169 || id == 131185 || id == 131218 || id == 131204) return;
+
+	std::string msgSource;
+	switch (source)
+	{
+	case GL_DEBUG_SOURCE_API:             msgSource = "GL_DEBUG_SOURCE_API";             break;
+	case GL_DEBUG_SOURCE_SHADER_COMPILER: msgSource = "GL_DEBUG_SOURCE_SHADER_COMPILER"; break;
+	case GL_DEBUG_SOURCE_THIRD_PARTY:     msgSource = "GL_DEBUG_SOURCE_THIRD_PARTY";     break;
+	case GL_DEBUG_SOURCE_APPLICATION:     msgSource = "GL_DEBUG_SOURCE_APPLICATION";     break;
+	case GL_DEBUG_SOURCE_OTHER:           msgSource = "GL_DEBUG_SOURCE_OTHER";           break;
+	}
+
+	std::string msgType;
+	switch (type)
+	{
+	case GL_DEBUG_TYPE_ERROR:               msgType = "GL_DEBUG_TYPE_ERROR";               break;
+	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: msgType = "GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR"; break;
+	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:  msgType = "GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR";  break;
+	case GL_DEBUG_TYPE_PORTABILITY:         msgType = "GL_DEBUG_TYPE_PORTABILITY";         break;
+	case GL_DEBUG_TYPE_PERFORMANCE:         msgType = "GL_DEBUG_TYPE_PERFORMANCE";         break;
+	case GL_DEBUG_TYPE_OTHER:               msgType = "GL_DEBUG_TYPE_OTHER";               break;
+	}
+
+	std::string msgSeverity = "DEFAULT";
+	switch (severity)
+	{
+	case GL_DEBUG_SEVERITY_LOW:    msgSeverity = "GL_DEBUG_SEVERITY_LOW";    break;
+	case GL_DEBUG_SEVERITY_MEDIUM: msgSeverity = "GL_DEBUG_SEVERITY_MEDIUM"; break;
+	case GL_DEBUG_SEVERITY_HIGH:   msgSeverity = "GL_DEBUG_SEVERITY_HIGH";   break;
+	}
+
+	std::string logMsg = "glDebugMessage: " + std::string(message) + ", type = " + msgType + ", source = " + msgSource + ", severity = " + msgSeverity;
+
+	if (type == GL_DEBUG_TYPE_ERROR) Warning(logMsg);
+	else                             Error(logMsg);
+}
+#endif
+
+bool Renderer::Init()
+{
+#if defined(_DEBUG)
+	glEnable(GL_DEBUG_OUTPUT);
+	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+	glDebugMessageCallback(glDebugCallback, nullptr);
+	glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+#endif
+
+	Print("OpenGL: OpenGL device information:");
+	Print("    > Vendor:   " + std::string((const char*)glGetString(GL_VENDOR)));
+	Print("    > Renderer: " + std::string((const char*)glGetString(GL_RENDERER)));
+	Print("    > Version:  " + std::string((const char*)glGetString(GL_VERSION)));
+	Print("    > GLSL:     " + std::string((const char*)glGetString(GL_SHADING_LANGUAGE_VERSION)));
+
+	return true;
+}
+
+void Renderer::Close()
+{
+}
+
+void Renderer::MainFrameBuffer()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void Renderer3D::BlitFrameBuffer(
+void Renderer::BlitFrameBuffer(
 	GLFramebufferRef readFramebuffer, GLFramebufferRef drawFramebuffer, 
 	GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, 
 	GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, 
@@ -590,7 +663,7 @@ void Renderer3D::BlitFrameBuffer(
 	);
 }
 
-void Renderer3D::Clear(bool color, bool depth, bool stencil)
+void Renderer::Clear(bool color, bool depth, bool stencil)
 {
 	GLbitfield mask = 0;
 	if (color) mask |= GL_COLOR_BUFFER_BIT;
@@ -599,31 +672,115 @@ void Renderer3D::Clear(bool color, bool depth, bool stencil)
 	glClear(mask);
 }
 
-void Renderer3D::SetViewport(GLint x, GLint y, GLsizei width, GLsizei height)
+void Renderer::SetViewport(GLint x, GLint y, GLsizei width, GLsizei height)
 {
 	glViewport(x, y, width, height);
 }
 
-void Renderer3D::SetScissor(GLint x, GLint y, GLsizei width, GLsizei height)
+void Renderer::SetScissor(GLint x, GLint y, GLsizei width, GLsizei height)
 {
 	glScissor(x, y, width, height);
 }
 
 #pragma endregion
-//==============================================================================
-// END Renderer3D
-//==============================================================================
 
 //==============================================================================
 // RenderWorld
 //==============================================================================
 #pragma region RenderWorld
 
-#pragma endregion
+void Camera::SetPosition(const glm::vec3& pos)
+{
+	const glm::vec3 oldTarget = GetNormalizedViewVector();
+	position = pos;
+	target = pos + oldTarget;
+}
 
-//==============================================================================
-// END RenderWorld
-//==============================================================================
+void Camera::SetPosition(const glm::vec3& pos, const glm::vec3& forwardLook)
+{
+	position = pos;
+	target = pos + forwardLook;
+}
+
+void Camera::MoveBy(float distance)
+{
+	const glm::vec3 offset = GetNormalizedViewVector() * distance;
+	position += offset;
+	target += offset;
+}
+
+void Camera::StrafeBy(float distance)
+{
+	const glm::vec3 strafeVector = glm::normalize(glm::cross(GetNormalizedViewVector(), up)) * distance;
+	position += distance;
+	target += distance;
+}
+
+void Camera::RotateLeftRight(float angleInDegrees)
+{
+	const glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(angleInDegrees), glm::vec3(0.0f, 1.0f, 0.0f)); // TODO: а может Up?
+	const glm::vec4 rotatedViewVector = rotationMatrix * glm::vec4(GetNormalizedViewVector(), 0.0f);
+	target = position + glm::vec3(rotatedViewVector);
+}
+
+void Camera::RotateUpDown(float angleInDegrees)
+{
+	const glm::vec3 viewVector = GetNormalizedViewVector();
+	const glm::vec3 viewVectorNoY = glm::normalize(glm::vec3(viewVector.x, 0.0f, viewVector.z));
+
+	float currentAngleDegrees = glm::degrees(acos(glm::dot(viewVectorNoY, viewVector)));
+	if (viewVector.y < 0.0f) currentAngleDegrees = -currentAngleDegrees;
+
+	const float newAngleDegrees = currentAngleDegrees + angleInDegrees;
+	if (newAngleDegrees > -85.0f && newAngleDegrees < 85.0f)
+	{
+		glm::vec3 rotationAxis = glm::cross(GetNormalizedViewVector(), up);
+		rotationAxis = glm::normalize(rotationAxis);
+
+		const glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(angleInDegrees), rotationAxis);
+		const glm::vec4 rotatedViewVector = rotationMatrix * glm::vec4(GetNormalizedViewVector(), 0.0f);
+
+		target = position + glm::vec3(rotatedViewVector);
+	}
+}
+
+glm::vec3 Camera::GetNormalizedViewVector() const
+{
+	return glm::normalize(target - position);
+}
+
+glm::mat4 Camera::GetViewMatrix() const
+{
+	return glm::lookAt(position, target, up);
+}
+
+glm::vec3 Camera::GetForward() const
+{
+	return GetNormalizedViewVector();
+}
+
+glm::vec3 Camera::GetRight() const
+{
+	glm::vec3 forwardVector = GetForward();
+#ifndef GLM_FORCE_LEFT_HANDED
+	return glm::normalize(glm::cross(forwardVector, up));
+#else
+	return glm::normalize(glm::cross(up, forwardVector));
+#endif
+}
+
+glm::vec3 Camera::GetUp() const
+{
+	glm::vec3 forwardVector = GetForward();
+	glm::vec3 rightVector = GetRight();
+#ifndef GLM_FORCE_LEFT_HANDED
+	return glm::normalize(glm::cross(rightVector, forwardVector));
+#else
+	return glm::normalize(glm::cross(forwardVector, rightVector));
+#endif
+}
+
+#pragma endregion
 
 //==============================================================================
 // Window
@@ -661,7 +818,7 @@ void Window::Destroy()
 
 bool Window::ShouldClose()
 {
-	return glfwWindowShouldClose(Engine.window);
+	return glfwWindowShouldClose(Engine.window) == GLFW_TRUE;
 }
 
 void Window::Update()
@@ -708,10 +865,6 @@ bool Window::IsResize()
 #pragma endregion
 
 //==============================================================================
-// END Window
-//==============================================================================
-
-//==============================================================================
 // Input
 //==============================================================================
 #pragma region Input
@@ -751,5 +904,51 @@ void Mouse::SetCursorMode(CursorMode mode)
 #pragma endregion
 
 //==============================================================================
-// END Input
+// IMGUI
 //==============================================================================
+#pragma region IMGUI
+
+bool IMGUI::Init()
+{
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGui::StyleColorsDark();
+
+	ImGuiIO& io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+	io.IniFilename = nullptr;
+
+	// Setup Dear ImGui style
+	//ImGui::StyleColorsDark();
+	//ImGui::StyleColorsLight();
+
+	//ImGuiStyle& style = ImGui::GetStyle();
+
+	ImGui_ImplGlfw_InitForOpenGL(Engine.window, true);
+	ImGui_ImplOpenGL3_Init("#version 330");
+
+	return true;
+}
+
+void IMGUI::Close()
+{
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
+}
+
+void IMGUI::Update()
+{
+	ImGui_ImplOpenGL3_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+	ImGui::NewFrame();
+}
+
+void IMGUI::Draw()
+{
+	ImGui::Render();
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+#pragma endregion

@@ -23,9 +23,6 @@ inline constexpr AttribFormat CreateAttribFormat(GLuint attribIndex, GLuint rela
 }
 
 #pragma endregion
-//==============================================================================
-// END Render Core
-//==============================================================================
 
 //==============================================================================
 // Render Resources
@@ -149,6 +146,3 @@ inline void GLTextureCube::createTexture(GLenum internalFormat, GLenum format, G
 }
 
 #pragma endregion
-//==============================================================================
-// END Render Resources
-//==============================================================================

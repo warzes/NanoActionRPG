@@ -1,102 +1,12 @@
 ﻿#include "NanoEngine.h"
 //-----------------------------------------------------------------------------
-#if defined(_MSC_VER)
-#	pragma comment( lib, "glfw3.lib" )
-#	pragma comment( lib, "assimp-vc143-mt.lib" )
-#endif
-//-----------------------------------------------------------------------------
-// Use discrete GPU by default.
-extern "C"
-{
-	// http://developer.download.nvidia.com/devzone/devcenter/gamegraphics/files/OptimusRenderingPolicies.pdf
-	__declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
-
-	// https://gpuopen.com/learn/amdpowerxpressrequesthighperformance/
-	__declspec(dllexport) unsigned long AmdPowerXpressRequestHighPerformance = 0x00000001;
-}
-//-----------------------------------------------------------------------------
-#if defined(_DEBUG)
-void APIENTRY glDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei /*length*/, const GLchar* message, const void* /*user_param*/) noexcept
-{
-	// ignore non-significant error/warning codes
-	if (id == 131169 || id == 131185 || id == 131218 || id == 131204) return;
-
-	std::string msgSource;
-	switch (source)
-	{
-	case GL_DEBUG_SOURCE_API:             msgSource = "GL_DEBUG_SOURCE_API";             break;
-	case GL_DEBUG_SOURCE_SHADER_COMPILER: msgSource = "GL_DEBUG_SOURCE_SHADER_COMPILER"; break;
-	case GL_DEBUG_SOURCE_THIRD_PARTY:     msgSource = "GL_DEBUG_SOURCE_THIRD_PARTY";     break;
-	case GL_DEBUG_SOURCE_APPLICATION:     msgSource = "GL_DEBUG_SOURCE_APPLICATION";     break;
-	case GL_DEBUG_SOURCE_OTHER:           msgSource = "GL_DEBUG_SOURCE_OTHER";           break;
-	}
-
-	std::string msgType;
-	switch (type)
-	{
-	case GL_DEBUG_TYPE_ERROR:               msgType = "GL_DEBUG_TYPE_ERROR";               break;
-	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: msgType = "GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR"; break;
-	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:  msgType = "GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR";  break;
-	case GL_DEBUG_TYPE_PORTABILITY:         msgType = "GL_DEBUG_TYPE_PORTABILITY";         break;
-	case GL_DEBUG_TYPE_PERFORMANCE:         msgType = "GL_DEBUG_TYPE_PERFORMANCE";         break;
-	case GL_DEBUG_TYPE_OTHER:               msgType = "GL_DEBUG_TYPE_OTHER";               break;
-	}
-
-	std::string msgSeverity = "DEFAULT";
-	switch (severity)
-	{
-	case GL_DEBUG_SEVERITY_LOW:    msgSeverity = "GL_DEBUG_SEVERITY_LOW";    break;
-	case GL_DEBUG_SEVERITY_MEDIUM: msgSeverity = "GL_DEBUG_SEVERITY_MEDIUM"; break;
-	case GL_DEBUG_SEVERITY_HIGH:   msgSeverity = "GL_DEBUG_SEVERITY_HIGH";   break;
-	}
-
-	std::string logMsg = "glDebugMessage: " + std::string(message) + ", type = " + msgType + ", source = " + msgSource + ", severity = " + msgSeverity;
-
-	if (type == GL_DEBUG_TYPE_ERROR) Warning(logMsg);
-	else                             Error(logMsg);
-}
-#endif
-//-----------------------------------------------------------------------------
 int main(
 	[[maybe_unused]] int   argc,
 	[[maybe_unused]] char* argv[])
 {
 	Window::Create("Game", 1024, 768);
-
-	Renderer3D renderer;
-
-#if defined(_DEBUG)
-	glEnable(GL_DEBUG_OUTPUT);
-	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-	glDebugMessageCallback(glDebugCallback, nullptr);
-	glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
-#endif
-
-	Print("OpenGL: OpenGL device information:");
-	Print("    > Vendor:   " + std::string((const char*)glGetString(GL_VENDOR)));
-	Print("    > Renderer: " + std::string((const char*)glGetString(GL_RENDERER)));
-	Print("    > Version:  " + std::string((const char*)glGetString(GL_VERSION)));
-	Print("    > GLSL:     " + std::string((const char*)glGetString(GL_SHADING_LANGUAGE_VERSION)));
-
-#pragma region ImGui
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-	ImGui::StyleColorsDark();
-
-	ImGuiIO& io = ImGui::GetIO();
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-	io.IniFilename = nullptr;
-
-	// Setup Dear ImGui style
-	//ImGui::StyleColorsDark();
-	//ImGui::StyleColorsLight();
-
-	//ImGuiStyle& style = ImGui::GetStyle();
-
-	ImGui_ImplGlfw_InitForOpenGL(Window::GetWindow(), true);
-	ImGui_ImplOpenGL3_Init("#version 330");
-#pragma endregion
+	Renderer::Init();
+	IMGUI::Init();
 
 #pragma region deltaTime
 	int fpsCount = 0;
@@ -223,31 +133,10 @@ int main(
 
 #pragma region imgui
 
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
+		IMGUI::Update();
 
-		static bool showStats = true;
-
-		//imgui main menu
 		{
-			ImGui::Begin("Menu");
-			ImGui::SetWindowFontScale(1.2f);
-
-			ImGui::Checkbox("Stats##check", &showStats);
-			ImGui::NewLine();
-			ImGui::Text("Settings");
-
-			ImGui::End();
-		}
-
-		ImGuiWindowFlags flags = {};
-
-		if (showStats)
-		{
-			ImGui::Begin("Stats", &showStats, flags);
-			//ImGui::SetWindowFontScale(2.0f);
-
+			ImGui::Begin("Stats");
 			ImGui::PlotHistogram("Fps graph", fpsArr, FPS_RECORD_ARR_SIZE, 0, 0,
 				0, 60);
 			ImGui::Text("Fps %d", currentFps);
@@ -258,42 +147,18 @@ int main(
 
 			ImGui::PlotHistogram("Milli seconds graph", deltaTimeArr, DELTA_TIME_ARR_SIZE, 0, 0,
 				0, 30);
-
-			//ImGui::PlotHistogram("Frame duration graph", deltaTimeArr, DELTA_TIME_ARR_SIZE, 0, 0,
-			//0, 0.32);
-			//ImGui::Text("Frame duration (ms) %f", deltaTime * 1000);
-
-
-			//ImGui::PlotHistogram("Render duration graph", profileeArr, Profiler_ARR_SIZE, 0, 0,
-			//0, 0.32);
-			//ImGui::Text("Render duration (ms) %f", lastProfilerRezult.timeSeconds * 1000);
-			//renderDurationProfilerFine.imguiPlotValues();
-
-			//renderDurationProfiler.imguiPlotValues();
-
-			//imguiRenderDuration.imguiPlotValues();
-
-			//swapBuffersDuration.imguiPlotValues();
-
 			ImGui::End();
 		}
-
-		ImGui::Render();
-
-#pragma endregion
-
-#pragma region camera
 #pragma endregion
 
 #pragma region render
-
 		renderDurationProfiler.start();
 		renderDurationProfilerFine.start();
 
 		glViewport(0, 0, Window::GetWidth(), Window::GetHeight());
 		glClearColor(0.0f, 0.2f, 0.4f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		IMGUI::Draw();
 
 		Window::Swap();
 
@@ -302,9 +167,8 @@ int main(
 #pragma endregion
 	}
 
-	ImGui_ImplOpenGL3_Shutdown();
-	ImGui_ImplGlfw_Shutdown();
-	ImGui::DestroyContext();
+	IMGUI::Close();
+	Renderer::Close();
 	Window::Destroy();
 }
 //-----------------------------------------------------------------------------
