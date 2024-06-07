@@ -82,6 +82,8 @@ Left handed
 #include <assimp/Vertex.h>
 #include <assimp/Bitmap.h>
 
+#include <physx/PxPhysicsAPI.h>
+
 #if defined(_MSC_VER)
 #	pragma warning(pop)
 #endif
@@ -420,8 +422,8 @@ struct MaterialTexture final
 
 struct MaterialProperties final
 {
-	glm::vec3 ambientColor;
 	glm::vec3 diffuseColor;
+	glm::vec3 ambientColor;
 	glm::vec3 specularColor;
 	float shininess = 0.0f;
 	float refracti = 0.0f;
@@ -446,6 +448,8 @@ public:
 
 	AABB GetBounding() const;
 	std::vector<glm::vec3> GetTriangle() const;
+
+	void Draw(const GLProgramPipelineRef& program) const;
 private:
 	void init();
 
