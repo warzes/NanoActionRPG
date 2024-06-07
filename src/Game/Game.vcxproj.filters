@@ -63,6 +63,7 @@
     <ClInclude Include="..\3rdparty\Profiler.h">
       <Filter>3rdparty</Filter>
     </ClInclude>
+    <ClInclude Include="Example.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="3rdparty">

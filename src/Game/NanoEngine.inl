@@ -1,4 +1,75 @@
 //==============================================================================
+// Math
+//==============================================================================
+#pragma region Math
+
+inline AABB::AABB(const glm::vec3& inMin, const glm::vec3& inMax) 
+	: min(inMin), max(inMax)
+{
+}
+
+inline AABB::AABB(const std::vector<glm::vec3>& points)
+{
+	for (size_t i = 0; i < points.size(); i++)
+		Combine(points[i]);
+}
+
+inline float AABB::GetVolume() const
+{
+	glm::vec3 diagonal = max - min;
+	return diagonal.x * diagonal.y * diagonal.z;
+}
+
+inline glm::vec3 AABB::GetCenter() const
+{
+	return (min + max) * 0.5f;
+}
+
+inline glm::vec3 AABB::GetHalfSize() const
+{
+	return (max - min) * 0.5f;
+}
+
+inline glm::vec3 AABB::GetDiagonal() const
+{
+	return max - min;
+}
+
+inline float AABB::GetSurfaceArea() const
+{
+	glm::vec3 diagonal = max - min;
+	return 2.0f * (diagonal.x * diagonal.y + diagonal.y * diagonal.z + diagonal.z * diagonal.x);
+}
+
+inline void AABB::Combine(const AABB& anotherAABB)
+{
+	min = glm::min(min, anotherAABB.min);
+	max = glm::max(max, anotherAABB.max);
+}
+
+inline void AABB::Combine(const glm::vec3& point)
+{
+	min = glm::min(min, point);
+	max = glm::max(max, point);
+}
+
+inline bool AABB::Overlaps(const AABB& anotherAABB)
+{
+	return max.x > anotherAABB.min.x && min.x < anotherAABB.max.x
+		&& max.y > anotherAABB.min.y && min.y < anotherAABB.max.y
+		&& max.z > anotherAABB.min.z && min.z < anotherAABB.max.z;
+}
+
+inline bool AABB::Inside(const glm::vec3& point)
+{
+	return max.x > point.x && min.x < point.x
+		&& max.y > point.y && min.y < point.y
+		&& max.z > point.z && min.z < point.x;
+}
+
+#pragma endregion
+
+//==============================================================================
 // Render Core
 //==============================================================================
 #pragma region Render Core
@@ -101,7 +172,7 @@ template<typename T>
 inline GLVertexArray::GLVertexArray(const std::vector<T>& vertices, const std::vector<uint8_t>& indices, const std::vector<AttribFormat>& attribFormats)
 	: GLVertexArray(
 		std::make_shared<GLBuffer>(vertices), sizeof(T),
-		std::make_shared<GLBuffer>(indices), IndexFormat::UInt8,
+		std::make_shared<GLBuffer>(indices), indices.size(), IndexFormat::UInt8,
 		attribFormats)
 {
 }
@@ -110,7 +181,7 @@ template<typename T>
 inline GLVertexArray::GLVertexArray(const std::vector<T>& vertices, const std::vector<uint16_t>& indices, const std::vector<AttribFormat>& attribFormats)
 	: GLVertexArray(
 		std::make_shared<GLBuffer>(vertices), sizeof(T),
-		std::make_shared<GLBuffer>(indices), IndexFormat::UInt16,
+		std::make_shared<GLBuffer>(indices), indices.size(), IndexFormat::UInt16,
 		attribFormats)
 {
 }
@@ -119,7 +190,7 @@ template<typename T>
 inline GLVertexArray::GLVertexArray(const std::vector<T>& vertices, const std::vector<uint32_t>& indices, const std::vector<AttribFormat>& attribFormats)
 	: GLVertexArray(
 		std::make_shared<GLBuffer>(vertices), sizeof(T),
-		std::make_shared<GLBuffer>(indices), IndexFormat::UInt32,
+		std::make_shared<GLBuffer>(indices), indices.size(), IndexFormat::UInt32,
 		attribFormats)
 {
 }
@@ -143,6 +214,31 @@ inline void GLTextureCube::createTexture(GLenum internalFormat, GLenum format, G
 
 	glTextureParameteri(m_handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTextureParameteri(m_handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+}
+
+#pragma endregion
+
+//==============================================================================
+// Renderer
+//==============================================================================
+#pragma region Renderer
+#pragma endregion
+
+//==============================================================================
+// RenderWorld
+//==============================================================================
+#pragma region RenderWorld
+
+inline constexpr std::vector<AttribFormat> GetMeshVertexFormat()
+{
+	return
+	{
+		CreateAttribFormat<glm::vec3>(0, offsetof(MeshVertex, position)),
+		CreateAttribFormat<glm::vec3>(1, offsetof(MeshVertex, color)),
+		CreateAttribFormat<glm::vec3>(2, offsetof(MeshVertex, normal)),
+		CreateAttribFormat<glm::vec2>(3, offsetof(MeshVertex, texCoords)),
+		CreateAttribFormat<glm::vec3>(4, offsetof(MeshVertex, tangent)),
+	};
 }
 
 #pragma endregion

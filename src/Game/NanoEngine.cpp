@@ -39,6 +39,11 @@ namespace
 		bool IsResize = false;
 		bool IsEnd = false;
 	} Engine;
+
+	struct
+	{
+		ImFont* defaultFont = nullptr;
+	} imgui;
 }
 
 void ResetGlobalVars()
@@ -68,6 +73,13 @@ void Fatal(const std::string& text)
 	Print("FATAL: " + text);
 	Engine.IsEnd = true;
 }
+#pragma endregion
+
+//==============================================================================
+// Math
+//==============================================================================
+#pragma region Math
+
 #pragma endregion
 
 //==============================================================================
@@ -315,17 +327,17 @@ void GLBuffer::destroyHandle()
 #pragma region GLVertexArray
 
 GLVertexArray::GLVertexArray(GLBufferRef vbo, size_t vertexSize, const std::vector<AttribFormat>& attribFormats)
-	: GLVertexArray(vbo, vertexSize, nullptr, {}, attribFormats)
+	: GLVertexArray(vbo, vertexSize, nullptr, 0, {}, attribFormats)
 {
 }
 
-GLVertexArray::GLVertexArray(GLBufferRef vbo, size_t vertexSize, GLBufferRef ibo, IndexFormat indexFormat, const std::vector<AttribFormat>& attribFormats)
+GLVertexArray::GLVertexArray(GLBufferRef vbo, size_t vertexSize, GLBufferRef ibo, size_t indexNum, IndexFormat indexFormat, const std::vector<AttribFormat>& attribFormats)
 {
 	createHandle();
 	setAttribFormats(attribFormats);
 
 	if (::IsValid(vbo) && vertexSize) setVertexBuffer(vbo, vertexSize);
-	if (::IsValid(ibo)) setIndexBuffer(ibo, indexFormat);
+	if (::IsValid(ibo)) setIndexBuffer(ibo, indexNum, indexFormat);
 }
 
 GLVertexArray::~GLVertexArray()
@@ -336,6 +348,16 @@ GLVertexArray::~GLVertexArray()
 void GLVertexArray::Bind()
 {
 	glBindVertexArray(m_handle);
+}
+
+void GLVertexArray::DrawTriangles()
+{
+	Bind();
+
+	const GLenum type = (m_indexFormat == IndexFormat::UInt8 ? GL_UNSIGNED_BYTE
+		: (m_indexFormat == IndexFormat::UInt16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT));
+
+	glDrawElements(GL_TRIANGLES, m_indexNum, type, nullptr);
 }
 
 void GLVertexArray::createHandle()
@@ -372,11 +394,12 @@ void GLVertexArray::setVertexBuffer(GLuint bindingIndex, GLBufferRef vbo, GLintp
 	m_vbo = vbo;
 }
 
-void GLVertexArray::setIndexBuffer(GLBufferRef ibo, IndexFormat indexFormat)
+void GLVertexArray::setIndexBuffer(GLBufferRef ibo, size_t indexNum, IndexFormat indexFormat)
 {
 	glVertexArrayElementBuffer(m_handle, *ibo);
 	m_ibo = ibo;
 	m_indexFormat = indexFormat;
+	m_indexNum = indexNum;
 }
 
 #pragma endregion
@@ -689,6 +712,44 @@ void Renderer::SetScissor(GLint x, GLint y, GLsizei width, GLsizei height)
 //==============================================================================
 #pragma region RenderWorld
 
+#pragma region Mesh
+
+Mesh::Mesh(const std::vector<MeshVertex>& vertices, const std::vector<uint32_t>& indices, const std::vector<MaterialTexture>& textures, const MaterialProperties& materialProperties)
+	: m_vertices(vertices)
+	, m_indices(indices)
+	, m_textures(textures)
+	, m_materialProp(materialProperties)
+{
+	init();
+}
+
+AABB Mesh::GetBounding() const
+{
+	return m_bounding;
+}
+
+std::vector<glm::vec3> Mesh::GetTriangle() const
+{
+	std::vector<glm::vec3> triangles;
+	for (size_t i = 0; i < m_vertices.size(); i++)
+		triangles.push_back(m_vertices[i].position);
+	return triangles;
+}
+
+void Mesh::init()
+{
+	std::vector<glm::vec3> points;
+	for (size_t i = 0; i < m_vertices.size(); i++)
+		points.push_back(m_vertices[i].position);
+	m_bounding = AABB(points);
+
+	m_vao = std::make_shared<GLVertexArray>(m_vertices, m_indices, GetMeshVertexFormat());
+}
+
+#pragma endregion
+
+#pragma region Camera
+
 void Camera::SetPosition(const glm::vec3& pos)
 {
 	const glm::vec3 oldTarget = GetNormalizedViewVector();
@@ -704,16 +765,16 @@ void Camera::SetPosition(const glm::vec3& pos, const glm::vec3& forwardLook)
 
 void Camera::MoveBy(float distance)
 {
-	const glm::vec3 offset = GetNormalizedViewVector() * distance;
-	position += offset;
-	target += offset;
+	const glm::vec3 vOffset = GetNormalizedViewVector() * distance;
+	position += vOffset;
+	target += vOffset;
 }
 
 void Camera::StrafeBy(float distance)
 {
 	const glm::vec3 strafeVector = glm::normalize(glm::cross(GetNormalizedViewVector(), up)) * distance;
-	position += distance;
-	target += distance;
+	position += strafeVector;
+	target += strafeVector;
 }
 
 void Camera::RotateLeftRight(float angleInDegrees)
@@ -782,6 +843,8 @@ glm::vec3 Camera::GetUp() const
 
 #pragma endregion
 
+#pragma endregion
+
 //==============================================================================
 // Window
 //==============================================================================
@@ -799,6 +862,8 @@ bool Window::Create(const char* title, int width, int height)
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	Engine.window = glfwCreateWindow(width, height, title, nullptr, nullptr);
+	glfwGetFramebufferSize(Engine.window, &Engine.windowWidth, &Engine.windowHeight);
+
 	glfwMakeContextCurrent(Engine.window);
 	glfwSwapInterval(0);
 
@@ -926,13 +991,16 @@ bool IMGUI::Init()
 	//ImGuiStyle& style = ImGui::GetStyle();
 
 	ImGui_ImplGlfw_InitForOpenGL(Engine.window, true);
-	ImGui_ImplOpenGL3_Init("#version 330");
+	ImGui_ImplOpenGL3_Init("#version 430");
+
+	imgui.defaultFont = io.Fonts->AddFontFromFileTTF("Data/fonts/roboto-regular.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesCyrillic());
 
 	return true;
 }
 
 void IMGUI::Close()
 {
+	ImGui::GetIO().Fonts->Clear();
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();

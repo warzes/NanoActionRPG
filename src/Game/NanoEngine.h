@@ -99,6 +99,37 @@ void Fatal(const std::string& text);
 #pragma endregion
 
 //==============================================================================
+// Math
+//==============================================================================
+#pragma region Math
+
+class AABB final
+{
+public:
+	AABB() = default;
+	AABB(const glm::vec3& inMin, const glm::vec3& inMax);
+	AABB(const std::vector<glm::vec3>& points);
+
+	[[nodiscard]] float GetVolume() const;
+
+	[[nodiscard]] glm::vec3 GetCenter() const;
+	[[nodiscard]] glm::vec3 GetHalfSize() const;
+	[[nodiscard]] glm::vec3 GetDiagonal() const;
+
+	[[nodiscard]] float GetSurfaceArea() const;
+
+	[[nodiscard]] void Combine(const AABB& anotherAABB);
+	[[nodiscard]] void Combine(const glm::vec3& point);
+	[[nodiscard]] bool Overlaps(const AABB& anotherAABB);
+	[[nodiscard]] bool Inside(const glm::vec3& point);
+
+	glm::vec3 min = glm::vec3(FLT_MAX);
+	glm::vec3 max = glm::vec3(-FLT_MAX);
+};
+
+#pragma endregion
+
+//==============================================================================
 // Render Core
 //==============================================================================
 #pragma region Render Core
@@ -239,7 +270,7 @@ class GLVertexArray final
 public:
 	GLVertexArray() = delete;
 	GLVertexArray(GLBufferRef vbo, size_t vertexSize, const std::vector<AttribFormat>& attribFormats);
-	GLVertexArray(GLBufferRef vbo, size_t vertexSize, GLBufferRef ibo, IndexFormat indexFormat, const std::vector<AttribFormat>& attribFormats);
+	GLVertexArray(GLBufferRef vbo, size_t vertexSize, GLBufferRef ibo, size_t indexNum, IndexFormat indexFormat, const std::vector<AttribFormat>& attribFormats);
 	template<typename T>
 	GLVertexArray(const std::vector<T>& vertices, const std::vector<uint8_t>& indices, const std::vector<AttribFormat>& attribFormats);
 	template<typename T>
@@ -254,19 +285,22 @@ public:
 
 	void Bind();
 
+	void DrawTriangles();
+
 private:
 	void createHandle();
 	void destroyHandle();
 	void setAttribFormats(const std::vector<AttribFormat>& attribFormats);
 	void setVertexBuffer(GLBufferRef vbo, size_t vertexSize);
 	void setVertexBuffer(GLuint bindingIndex, GLBufferRef vbo, GLintptr offset = 0, size_t stride = 1);
-	void setIndexBuffer(GLBufferRef ibo, IndexFormat indexFormat);
+	void setIndexBuffer(GLBufferRef ibo, size_t indexNum, IndexFormat indexFormat);
 
 	GLuint m_handle = 0;
 	GLBufferRef m_vbo = nullptr;
 	GLBufferRef m_ibo = nullptr;
 	size_t m_vertexSize = 0;
 	IndexFormat m_indexFormat = IndexFormat::UInt32;
+	size_t m_indexNum = 0;
 };
 using GLVertexArrayRef = std::shared_ptr<GLVertexArray>;
 
@@ -402,10 +436,27 @@ struct MeshVertex final
 	glm::vec3 tangent;
 };
 
+constexpr inline std::vector<AttribFormat> GetMeshVertexFormat();
+
 class Mesh final
 {
+public:
+	Mesh() = delete;
+	Mesh(const std::vector<MeshVertex>& vertices, const std::vector<uint32_t>& indices, const std::vector<MaterialTexture>& textures, const MaterialProperties& materialProperties);
 
+	AABB GetBounding() const;
+	std::vector<glm::vec3> GetTriangle() const;
+private:
+	void init();
+
+	std::vector<MeshVertex> m_vertices;
+	std::vector<MaterialTexture> m_textures;
+	std::vector<uint32_t> m_indices;
+	AABB m_bounding;
+	MaterialProperties m_materialProp;
+	GLVertexArrayRef m_vao = nullptr;
 };
+using MeshRef = std::shared_ptr<Mesh>;
 
 class Camera final
 {
