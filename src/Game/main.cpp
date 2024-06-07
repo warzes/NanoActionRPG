@@ -3,17 +3,14 @@
 
 using namespace physx;
 
-
 #pragma comment( lib, "PhysX_64.lib" )
 #pragma comment( lib, "PhysXFoundation_64.lib" )
-
 //#pragma comment( lib, "LowLevel_static_64.lib" )
 //#pragma comment( lib, "LowLevelAABB_static_64.lib" )
 //#pragma comment( lib, "LowLevelDynamics_static_64.lib" )
 #pragma comment( lib, "PhysXCharacterKinematic_static_64.lib" )
 #pragma comment( lib, "PhysXExtensions_static_64.lib" )
 #pragma comment( lib, "PhysXPvdSDK_static_64.lib" )
-
 
 #define PVD_HOST "127.0.0.1"	//Set this to the IP address of the system running the PhysX Visual Debugger that you want to connect to.
 

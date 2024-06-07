@@ -83,7 +83,6 @@ inline constexpr std::pair<GLint, GLenum> TypeToSizeEnum()
 	if constexpr (std::is_same_v<T, glm::vec2>) return std::make_pair(2, GL_FLOAT);
 	if constexpr (std::is_same_v<T, glm::vec3>) return std::make_pair(3, GL_FLOAT);
 	if constexpr (std::is_same_v<T, glm::vec4>) return std::make_pair(4, GL_FLOAT);
-	Fatal("unsupported type");
 }
 
 template<typename T>
@@ -131,22 +130,26 @@ inline void GLSeparableShaderProgram::SetUniform(GLint location, const T& value)
 template <typename T>
 inline void GLProgramPipeline::SetVertexUniform(GLint location, const T& value)
 {
-	if (m_vertexShader) m_vertexShader->SetUniform<T>(location, value);
+	if (m_vertexShader && location >= 0) 
+		m_vertexShader->SetUniform<T>(location, value);
 }
 template <typename T>
 inline void GLProgramPipeline::SetGeometryUniform(GLint location, const T& value)
 {
-	if (m_geometryShader) m_geometryShader->SetUniform<T>(location, value);
+	if (m_geometryShader && location >= 0) 
+		m_geometryShader->SetUniform<T>(location, value);
 }
 template <typename T>
 inline void GLProgramPipeline::SetFragmentUniform(GLint location, const T& value)
 {
-	if (m_fragmentShader) m_fragmentShader->SetUniform<T>(location, value);
+	if (m_fragmentShader && location >= 0) 
+		m_fragmentShader->SetUniform<T>(location, value);
 }
 template <typename T>
 inline void GLProgramPipeline::SetComputeUniform(GLint location, const T& value)
 {
-	if (m_computeShader) m_computeShader->SetUniform<T>(location, value);
+	if (m_computeShader && location >= 0) 
+		m_computeShader->SetUniform<T>(location, value);
 }
 
 template<typename T>

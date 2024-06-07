@@ -6,6 +6,7 @@
 #pragma region Base Header
 
 #if defined(_MSC_VER)
+#	pragma warning(disable : 4099)
 #	pragma warning(disable : 4514)
 #	pragma warning(disable : 4820)
 #	pragma warning(disable : 5045)
@@ -414,6 +415,12 @@ namespace Renderer
 //==============================================================================
 #pragma region RenderWorld
 
+constexpr const char* UniformDiffuseColorName = "uDiffuseColor";
+constexpr const char* UniformAmbientColorName = "uAmbientColor";
+constexpr const char* UniformSpecularColorName = "uSpecularColor";
+constexpr const char* UniformShininessName = "uShininess";
+constexpr const char* UniformRefractiName = "uRefracti";
+
 struct MaterialTexture final
 {
 	GLTexture2DRef texture = nullptr;
@@ -446,10 +453,10 @@ public:
 	Mesh() = delete;
 	Mesh(const std::vector<MeshVertex>& vertices, const std::vector<uint32_t>& indices, const std::vector<MaterialTexture>& textures, const MaterialProperties& materialProperties);
 
-	AABB GetBounding() const;
-	std::vector<glm::vec3> GetTriangle() const;
+	[[nodiscard]] AABB GetBounding() const;
+	[[nodiscard]] std::vector<glm::vec3> GetTriangle() const;
 
-	void Draw(const GLProgramPipelineRef& program) const;
+	void Draw(const GLProgramPipelineRef& program);
 private:
 	void init();
 
@@ -459,8 +466,45 @@ private:
 	AABB m_bounding;
 	MaterialProperties m_materialProp;
 	GLVertexArrayRef m_vao = nullptr;
+	int m_diffuseColorLoc = -1;
+	int m_ambientColorLoc = -1;
+	int m_specularColorLoc = -1;
+	int m_shininessLoc = -1;
+	int m_refractiLoc = -1;
+
 };
 using MeshRef = std::shared_ptr<Mesh>;
+
+class Model final
+{
+public:
+	Model() = delete;
+	Model(const std::string& modelPath);
+
+	void Draw(const GLProgramPipelineRef& program);
+
+	[[nodiscard]] AABB GetBounding() const;
+	[[nodiscard]] std::vector<glm::vec3> GetTriangle() const;
+
+private:
+	void loadModel(const std::string& modelPath);
+	void traverseNodes();
+	MeshRef processMesh(const aiMesh* AiMesh);
+	void processVertex(const aiMesh* AiMesh, std::vector<MeshVertex>& vertices);
+	void processIndices(const aiMesh* AiMesh, std::vector<uint32_t>& indices);
+	void processTextures(const aiMesh* AiMesh, std::vector<MaterialTexture>& textures);
+	void processMatProperties(const aiMesh* AiMesh, MaterialProperties& meshMatProperties);
+	void loadTextureFromMaterial(aiTextureType textureType, const aiMaterial* mat, std::vector<MaterialTexture>& textures);
+	void computeAABB();
+
+	int m_meshCount = -1;
+	std::vector<MaterialTexture> m_loadedTextures;
+	std::vector<MeshRef> m_meshes;
+	std::string m_directory;
+	const aiScene* m_scene = nullptr;
+	AABB m_bounding;
+};
+using ModelRef = std::shared_ptr<Model>;
 
 class Camera final
 {
