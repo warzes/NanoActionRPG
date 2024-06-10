@@ -777,9 +777,12 @@ void Mesh::init()
 
 #pragma region Model
 
-Model::Model(const std::string& modelPath)
+Model::Model(const std::string& modelPath, bool flipUV)
 {
-	loadModel(modelPath);
+	std::string extension = strrchr(modelPath.c_str(), '.'); // TODO: найти лучшее решение
+	//if (extension == "obj")
+	
+	loadAssimpModel(modelPath, flipUV);
 }
 
 void Model::Draw(const GLProgramPipelineRef& program)
@@ -804,24 +807,29 @@ std::vector<glm::vec3> Model::GetTriangle() const
 	return Triangle;
 }
 
-void Model::loadModel(const std::string& modelPath)
+void Model::loadAssimpModel(const std::string& modelPath, bool flipUV)
 {
+	unsigned int flags = aiProcess_Triangulate | aiProcess_CalcTangentSpace;
+#if defined(GLM_FORCE_LEFT_HANDED)
+	flags |= aiProcess_MakeLeftHanded;
+#endif
+	if (flipUV) flags |= aiProcess_FlipUVs;
+
 	Assimp::Importer modelImporter;
-	m_scene = modelImporter.ReadFile(modelPath, aiProcess_Triangulate | aiProcess_CalcTangentSpace);
+	m_scene = modelImporter.ReadFile(modelPath, flags);
 	if (!m_scene || !m_scene->mRootNode || m_scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE)
 	{
 		Error("Load Model error: " + std::string(modelImporter.GetErrorString()));
 		return;
 	}
 	m_directory = modelPath.substr(0, modelPath.find_last_of('/'));
-	traverseNodes();
+	processNode();
 	computeAABB();
 }
 
-void Model::traverseNodes()
+void Model::processNode()
 {
-	GLint NumMeshes = static_cast<GLint>(m_scene->mNumMeshes);
-	for (GLint i = 0; i < NumMeshes; ++i)
+	for (unsigned i = 0; i < m_scene->mNumMeshes; ++i)
 		m_meshes.push_back(processMesh(m_scene->mMeshes[i]));
 }
 
@@ -841,30 +849,31 @@ MeshRef Model::processMesh(const aiMesh* AiMesh)
 
 void Model::processVertex(const aiMesh* AiMesh, std::vector<MeshVertex>& vertices)
 {
-	_ASSERT(AiMesh);
-	GLint NumVertices = (GLint)AiMesh->mNumVertices;
-	for (GLint i = 0; i < NumVertices; ++i)
+	assert(AiMesh);
+	for (unsigned i = 0; i < AiMesh->mNumVertices; ++i)
 	{
 		MeshVertex vertex;
 		vertex.position = glm::vec3(AiMesh->mVertices[i].x, AiMesh->mVertices[i].y, AiMesh->mVertices[i].z);
 
-		//if (AiMesh->mColors) // TODO: ошибка
-		//	vertex.color = glm::vec3(AiMesh->mColors[i]->r, AiMesh->mColors[i]->g, AiMesh->mColors[i]->b); // TODO: а нужно ли брать альфу?
-		//else
+		if (AiMesh->mColors[0])
+			vertex.color = glm::vec3(AiMesh->mColors[0][i].r, AiMesh->mColors[0][i].g, AiMesh->mColors[0][i].b);
+		else
 		vertex.color = glm::vec3(1.0f);
 
 		if (AiMesh->mNormals)
 			vertex.normal = glm::vec3(AiMesh->mNormals[i].x, AiMesh->mNormals[i].y, AiMesh->mNormals[i].z);
 		else
-			vertex.normal = glm::vec3(0.0f, 0.0f, 0.0f);
+			vertex.normal = glm::vec3(0.0f);
 
 		if (AiMesh->mTextureCoords[0])
 			vertex.texCoords = glm::vec2(AiMesh->mTextureCoords[0][i].x, AiMesh->mTextureCoords[0][i].y);
 		else
-			vertex.texCoords = glm::vec2(0.0f, 0.0f);
+			vertex.texCoords = glm::vec2(0.0f);
 
 		if (AiMesh->mTangents)
 			vertex.tangent = glm::vec3(AiMesh->mTangents[i].x, AiMesh->mTangents[i].y, AiMesh->mTangents[i].z);
+		else
+			vertex.tangent = glm::vec3(0.0f);
 
 		vertices.push_back(vertex);
 	}
@@ -872,13 +881,11 @@ void Model::processVertex(const aiMesh* AiMesh, std::vector<MeshVertex>& vertice
 
 void Model::processIndices(const aiMesh* AiMesh, std::vector<uint32_t>& indices)
 {
-	_ASSERT(AiMesh);
-	GLint NumFaces = AiMesh->mNumFaces;
-	for (GLint i = 0; i < NumFaces; ++i)
+	assert(AiMesh);
+	for (unsigned i = 0; i < AiMesh->mNumFaces; ++i)
 	{
 		aiFace AiFace = AiMesh->mFaces[i];
-		GLint NumIndices = AiFace.mNumIndices;
-		for (GLint k = 0; k < NumIndices; ++k)
+		for (unsigned k = 0; k < AiFace.mNumIndices; ++k)
 			indices.push_back(AiFace.mIndices[k]);
 	}
 }
@@ -888,32 +895,12 @@ void Model::processTextures(const aiMesh* AiMesh, std::vector<MaterialTexture>& 
 	_ASSERT(AiMesh);
 	if (AiMesh->mMaterialIndex < 0)
 		return;
-	aiMaterial* pAiMat = m_scene->mMaterials[AiMesh->mMaterialIndex];
-	loadTextureFromMaterial(aiTextureType_DIFFUSE, pAiMat, textures);
-	loadTextureFromMaterial(aiTextureType_SPECULAR, pAiMat, textures);
-	loadTextureFromMaterial(aiTextureType_HEIGHT, pAiMat, textures);
-	loadTextureFromMaterial(aiTextureType_SHININESS, pAiMat, textures);
-	loadTextureFromMaterial(aiTextureType_AMBIENT, pAiMat, textures);
-}
-
-void Model::processMatProperties(const aiMesh* AiMesh, MaterialProperties& meshMatProperties)
-{
-	_ASSERT(AiMesh);
-	if (AiMesh->mMaterialIndex < 0)
-		return;
-	aiMaterial* pAiMat = m_scene->mMaterials[AiMesh->mMaterialIndex];
-	aiColor3D AmbientColor, DiffuseColor, SpecularColor;
-	float Shininess = 0.0f, Refracti = 0.0f;
-	pAiMat->Get(AI_MATKEY_COLOR_AMBIENT, AmbientColor);
-	pAiMat->Get(AI_MATKEY_COLOR_DIFFUSE, DiffuseColor);
-	pAiMat->Get(AI_MATKEY_COLOR_SPECULAR, SpecularColor);
-	pAiMat->Get(AI_MATKEY_SHININESS, Shininess);
-	pAiMat->Get(AI_MATKEY_REFRACTI, Refracti);
-	meshMatProperties.diffuseColor = { DiffuseColor.r, DiffuseColor.g, DiffuseColor.b };
-	meshMatProperties.ambientColor = { AmbientColor.r, AmbientColor.g, AmbientColor.b };
-	meshMatProperties.specularColor = { SpecularColor.r, SpecularColor.g, SpecularColor.b };
-	meshMatProperties.shininess = Shininess;
-	meshMatProperties.refracti = Refracti;
+	aiMaterial* material = m_scene->mMaterials[AiMesh->mMaterialIndex];
+	loadTextureFromMaterial(aiTextureType_DIFFUSE, material, textures);
+	loadTextureFromMaterial(aiTextureType_SPECULAR, material, textures);
+	loadTextureFromMaterial(aiTextureType_HEIGHT, material, textures);
+	loadTextureFromMaterial(aiTextureType_SHININESS, material, textures);
+	loadTextureFromMaterial(aiTextureType_AMBIENT, material, textures);
 }
 
 void Model::loadTextureFromMaterial(aiTextureType textureType, const aiMaterial* mat, std::vector<MaterialTexture>& textures)
@@ -952,6 +939,26 @@ void Model::loadTextureFromMaterial(aiTextureType textureType, const aiMaterial*
 			m_loadedTextures.push_back(MeshTexture);
 		}
 	}
+}
+
+void Model::processMatProperties(const aiMesh* AiMesh, MaterialProperties& meshMatProperties)
+{
+	_ASSERT(AiMesh);
+	if (AiMesh->mMaterialIndex < 0)
+		return;
+	aiMaterial* pAiMat = m_scene->mMaterials[AiMesh->mMaterialIndex];
+	aiColor3D AmbientColor, DiffuseColor, SpecularColor;
+	float Shininess = 0.0f, Refracti = 0.0f;
+	pAiMat->Get(AI_MATKEY_COLOR_AMBIENT, AmbientColor);
+	pAiMat->Get(AI_MATKEY_COLOR_DIFFUSE, DiffuseColor);
+	pAiMat->Get(AI_MATKEY_COLOR_SPECULAR, SpecularColor);
+	pAiMat->Get(AI_MATKEY_SHININESS, Shininess);
+	pAiMat->Get(AI_MATKEY_REFRACTI, Refracti);
+	meshMatProperties.diffuseColor = { DiffuseColor.r, DiffuseColor.g, DiffuseColor.b };
+	meshMatProperties.ambientColor = { AmbientColor.r, AmbientColor.g, AmbientColor.b };
+	meshMatProperties.specularColor = { SpecularColor.r, SpecularColor.g, SpecularColor.b };
+	meshMatProperties.shininess = Shininess;
+	meshMatProperties.refracti = Refracti;
 }
 
 void Model::computeAABB()

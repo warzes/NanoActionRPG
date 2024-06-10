@@ -115,7 +115,9 @@ int main(
 	[[maybe_unused]] char* argv[])
 {
 	//Example001();
-	//return 0;
+	Example002();
+
+	return 0;
 
 	{
 		static const PxU32 frameCount = 100;

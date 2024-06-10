@@ -20,6 +20,7 @@
 #endif
 
 #include <cassert>
+#include <cstring>
 #include <string>
 #include <random>
 #include <ratio>
@@ -479,7 +480,7 @@ class Model final
 {
 public:
 	Model() = delete;
-	Model(const std::string& modelPath);
+	Model(const std::string& modelPath, bool flipUV = true);
 
 	void Draw(const GLProgramPipelineRef& program);
 
@@ -487,14 +488,14 @@ public:
 	[[nodiscard]] std::vector<glm::vec3> GetTriangle() const;
 
 private:
-	void loadModel(const std::string& modelPath);
-	void traverseNodes();
+	void loadAssimpModel(const std::string& modelPath, bool flipUV);
+	void processNode();
 	MeshRef processMesh(const aiMesh* AiMesh);
 	void processVertex(const aiMesh* AiMesh, std::vector<MeshVertex>& vertices);
 	void processIndices(const aiMesh* AiMesh, std::vector<uint32_t>& indices);
 	void processTextures(const aiMesh* AiMesh, std::vector<MaterialTexture>& textures);
-	void processMatProperties(const aiMesh* AiMesh, MaterialProperties& meshMatProperties);
 	void loadTextureFromMaterial(aiTextureType textureType, const aiMaterial* mat, std::vector<MaterialTexture>& textures);
+	void processMatProperties(const aiMesh* AiMesh, MaterialProperties& meshMatProperties);
 	void computeAABB();
 
 	int m_meshCount = -1;
