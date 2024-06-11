@@ -378,26 +378,114 @@ void Example003()
 	public:
 		void Create(int inWidth, int inHeight)
 		{
-			Destroy();
+			Resize(inWidth, inHeight);
 
-			width = inWidth;
-			height = inHeight;
+#pragma region VertexShader
+			const char* vertSource = R"(
+#version 460
 
-			position = std::make_shared<GLTexture2D>(GL_RGBA32F, GL_RGBA, GL_FLOAT, width, height, nullptr, GL_LINEAR);
-			normal = std::make_shared<GLTexture2D>(GL_RGBA32F, GL_RGBA, GL_FLOAT, width, height, nullptr, GL_LINEAR);
-			albedo = std::make_shared<GLTexture2D>(GL_RGBA32F, GL_RGBA, GL_FLOAT, width, height, nullptr, GL_LINEAR);
-			depth = std::make_shared<GLTexture2D>(GL_DEPTH_COMPONENT32, GL_DEPTH, GL_FLOAT, width, height, nullptr, GL_NEAREST);
+out gl_PerVertex { vec4 gl_Position; };
 
-			fbo = GLFramebufferRef{ new GLFramebuffer({ position, normal, albedo }, depth) };
+out outBlock
+{
+	vec3 FragPosInViewSpace; // POSITION
+	vec3 Color;
+	vec3 Normal;
+	vec2 TexCoord;
+} o;
+
+layout (location = 0) in vec3 Position;
+layout (location = 1) in vec3 Color;
+layout (location = 2) in vec3 Normal;
+layout (location = 3) in vec2 TexCoord;
+
+layout (location = 0) uniform mat4 ProjectionMatrix;
+layout (location = 1) uniform mat4 ViewMatrix;
+layout (location = 2) uniform mat4 WorldMatrix;
+
+void main()
+{
+	const mat4 VWMatrix = ViewMatrix * WorldMatrix;
+	const vec4 FragPosInViewSpace = VWMatrix * vec4(Position, 1.0);
+	gl_Position = ProjectionMatrix * FragPosInViewSpace;
+	o.Color = Color;
+	o.TexCoord = TexCoord;
+	o.Normal = normalize(mat3(transpose(inverse(VWMatrix))) * Normal);
+	o.FragPosInViewSpace = FragPosInViewSpace.xyz;
+}
+)";
+#pragma endregion
+
+#pragma region FragmentShader
+			const char* fragSource = R"(
+#version 460
+
+in inBlock
+{
+	vec3 FragPosInViewSpace;
+	vec3 Color;
+	vec3 Normal;
+	vec2 TexCoord;
+} i;
+
+layout (location = 0) out vec3 outPosition;
+layout (location = 1) out vec3 outNormal;
+layout (location = 2) out vec4 outAlbedo;
+
+layout(binding = 0) uniform sampler2D DiffuseTexture;
+
+void main()
+{
+	vec4 diffuseTex = texture(DiffuseTexture, i.TexCoord);
+
+	outPosition = i.FragPosInViewSpace;
+	outNormal = i.Normal;
+	outAlbedo.rgb = diffuseTex.rgb * i.Color;
+	outAlbedo.a = diffuseTex.a;
+}
+)";
+#pragma endregion
+
+			program = std::make_shared<GLProgramPipeline>(vertSource, fragSource);
 		}
 		void Destroy()
 		{
+			program.reset();
 			fbo.reset();
 			position.reset();
 			normal.reset();
 			albedo.reset();
 			depth.reset();
 			width = height = 0;
+		}
+
+		void Bind()
+		{
+			constexpr auto depthClearVal = 1.0f;
+
+			fbo->ClearFramebuffer(GL_COLOR, 0, glm::value_ptr(glm::vec4(0.0f)));
+			fbo->ClearFramebuffer(GL_COLOR, 1, glm::value_ptr(glm::vec4(0.0f)));
+			fbo->ClearFramebuffer(GL_COLOR, 2, glm::value_ptr(glm::vec4(0.0f)));
+
+			fbo->ClearFramebuffer(GL_DEPTH, 0, &depthClearVal);
+
+			fbo->Bind();
+			Renderer::SetViewport(0, 0, width, height);
+
+			program->Bind();
+		}
+
+		void Resize(int inWidth, int inHeight)
+		{
+			width = inWidth;
+			height = inHeight;
+
+			position.reset(new GLTexture2D(GL_RGBA32F, GL_RGBA, GL_FLOAT, width, height, nullptr, GL_LINEAR));
+			normal.reset(new GLTexture2D(GL_RGBA32F, GL_RGBA, GL_FLOAT, width, height, nullptr, GL_LINEAR));
+			albedo.reset(new GLTexture2D(GL_RGBA32F, GL_RGBA, GL_FLOAT, width, height, nullptr, GL_LINEAR));
+			depth.reset(new GLTexture2D(GL_DEPTH_COMPONENT32, GL_DEPTH, GL_FLOAT, width, height, nullptr, GL_NEAREST));
+
+			fbo = GLFramebufferRef{ new GLFramebuffer({ position, normal, albedo }, depth) };
 		}
 
 		GLFramebufferRef fbo = nullptr;
@@ -407,70 +495,125 @@ void Example003()
 		GLTexture2DRef albedo = nullptr;
 		GLTexture2DRef depth = nullptr;
 
+		GLProgramPipelineRef program = nullptr;
+
 		int width = 0;
 		int height = 0;
 	};
 
+	GBuffer gbuffer;
+	gbuffer.Create(Window::GetWidth(), Window::GetHeight());
+	
+	class FinalFB
+	{
+	public:
+		void Create(int inWidth, int inHeight)
+		{
+			Resize(inWidth, inHeight);
 
-	const char* mainVertSource = R"(
+#pragma region VertexShader
+			const char* vertSource = R"(
 #version 460
-#pragma debug(on)
 
 out gl_PerVertex { vec4 gl_Position; };
 
-out out_block
+out outBlock
 {
-	vec3 pos;
-	vec3 col;
-	vec3 nrm;
-	vec2 uvs;
+	vec2 texcoord;
 } o;
-
-layout (location = 0) in vec3 pos;
-layout (location = 1) in vec3 col;
-layout (location = 2) in vec3 nrm;
-layout (location = 3) in vec2 uvs;
-
-layout (location = 0) uniform mat4 proj;
-layout (location = 1) uniform mat4 view;
-layout (location = 2) uniform mat4 modl;
 
 void main()
 {
-	const vec4 mpos = (view * modl * vec4(pos, 1.0));
-	o.pos = (modl * vec4(pos, 1.0)).xyz;
-	o.col = col;
-	o.nrm = mat3(transpose(inverse(modl))) * nrm;
-	o.uvs = uvs;
-	gl_Position = proj * mpos;
+	vec2 v[] = {
+		vec2(-1.0f, 1.0f),
+		vec2(1.0f, 1.0f),
+		vec2(1.0f,-1.0f),
+		vec2(-1.0f,-1.0f)
+	};
+	vec2 t[] = {
+		vec2(0.0f, 1.0f),
+		vec2(1.0f, 1.0f),
+		vec2(1.0f, 0.0f),
+		vec2(0.0f, 0.0f)
+
+	};
+	uint i[] = { 0, 3, 2, 2, 1, 0 };
+
+	const vec2 position = v[i[gl_VertexID]];
+	const vec2 texcoord = t[i[gl_VertexID]];
+
+	o.texcoord = texcoord;
+	gl_Position = vec4(position, 0.0, 1.0);
 }
 )";
+#pragma endregion
 
-	const char* mainFragSource = R"(
+#pragma region FragmentShader
+			const char* fragSource = R"(
 #version 460
-#pragma debug(on)
-
-in in_block
-{
-	vec3 pos;
-	vec3 col;
-	vec3 nrm;
-	vec2 uvs;
-} i;
 
 layout (location = 0) out vec4 outColor;
 
-layout(binding = 0) uniform sampler2D sDiffuseTexture;
+layout (binding = 0) uniform sampler2D computeTexture;
+
+in in_block
+{
+	vec2 texcoord;
+} i;
 
 void main()
 {
-	outColor = texture(sDiffuseTexture, i.uvs);
-	outColor.rgb = outColor.rgb * i.col;
+	vec3 TexelColor = texture(computeTexture, i.texcoord).rgb;
+	TexelColor = pow(TexelColor, vec3(1.0f/2.2f));
+	outColor = vec4(TexelColor, 1.0f);
 }
 )";
-	
+#pragma endregion
 
-	GLProgramPipelineRef ppMain{ new GLProgramPipeline(mainVertSource, mainFragSource) };
+			program = std::make_shared<GLProgramPipeline>(vertSource, fragSource);
+		}
+		void Destroy()
+		{
+			program.reset();
+			fbo.reset();
+			color.reset();
+			width = height = 0;
+		}
+
+		void Bind()
+		{
+			constexpr auto depthClearVal = 1.0f;
+			fbo->ClearFramebuffer(GL_COLOR, 0, glm::value_ptr(glm::vec3(0.2, 0.6f, 1.0f)));
+			fbo->ClearFramebuffer(GL_DEPTH, 0, &depthClearVal);
+
+			fbo->Bind();
+			Renderer::SetViewport(0, 0, width, height);
+
+			program->Bind();
+		}
+
+		void Resize(int inWidth, int inHeight)
+		{
+			width = inWidth;
+			height = inHeight;
+
+			color.reset(new GLTexture2D(GL_RGB8, GL_RGB, width, height, nullptr, GL_NEAREST));
+
+			fbo = GLFramebufferRef{ new GLFramebuffer({ color }) };
+		}
+
+		GLFramebufferRef fbo = nullptr;
+		GLTexture2DRef color = nullptr;
+
+		GLProgramPipelineRef program = nullptr;
+
+		int width = 0;
+		int height = 0;
+	};
+
+	FinalFB finalFB;
+	finalFB.Create(Window::GetWidth(), Window::GetHeight());
+	GLVertexArrayRef VAOEmpty{ new GLVertexArray };
 
 	ModelRef model{ new Model("Data/Models/sponza/sponza.obj") };
 
@@ -488,6 +631,8 @@ void main()
 		{
 			perspective = glm::perspective(glm::radians(60.0f), (float)Window::GetWidth() / (float)Window::GetHeight(), 0.1f, 1000.f);
 			glViewport(0, 0, Window::GetWidth(), Window::GetHeight());
+			gbuffer.Resize(Window::GetWidth(), Window::GetHeight());
+			finalFB.Resize(Window::GetWidth(), Window::GetHeight());
 		}
 
 		// Update
@@ -529,16 +674,31 @@ void main()
 #pragma endregion
 
 #pragma region render
-		glViewport(0, 0, Window::GetWidth(), Window::GetHeight());
-		glClearColor(0.0f, 0.2f, 0.4f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		// GBuffer
+		{
+			gbuffer.Bind();
+			gbuffer.program->SetVertexUniform(0, perspective);
+			gbuffer.program->SetVertexUniform(1, camera.GetViewMatrix());
+			gbuffer.program->SetVertexUniform(2, glm::mat4(1.0f));
+			model->Draw(gbuffer.program);
+		}
 
-		ppMain->Bind();
-		ppMain->SetVertexUniform(0, perspective);
-		ppMain->SetVertexUniform(1, camera.GetViewMatrix());
-		ppMain->SetVertexUniform(2, glm::mat4(1.0f));
+		// Final framebuffer
+		{
+			finalFB.Bind();
+			gbuffer.albedo->Bind(0);
+			VAOEmpty->Bind();
+			glDrawArrays(GL_TRIANGLES, 0, 6);
+		}
 
-		model->Draw(ppMain);
+		// Main frame
+		{
+			Renderer::MainFrameBuffer();
+			Renderer::BlitFrameBuffer(finalFB.fbo, nullptr,
+				0, 0, Window::GetWidth(), Window::GetHeight(),
+				0, 0, Window::GetWidth(), Window::GetHeight(),
+				GL_COLOR_BUFFER_BIT, GL_NEAREST);
+		}
 
 		IMGUI::Draw();
 

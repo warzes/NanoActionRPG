@@ -326,6 +326,11 @@ void GLBuffer::destroyHandle()
 
 #pragma region GLVertexArray
 
+GLVertexArray::GLVertexArray()
+{
+	createHandle();
+}
+
 GLVertexArray::GLVertexArray(GLBufferRef vbo, size_t vertexSize, const std::vector<AttribFormat>& attribFormats)
 	: GLVertexArray(vbo, vertexSize, nullptr, 0, {}, attribFormats)
 {
@@ -354,10 +359,17 @@ void GLVertexArray::DrawTriangles()
 {
 	Bind();
 
-	const GLenum type = (m_indexFormat == IndexFormat::UInt8 ? GL_UNSIGNED_BYTE
-		: (m_indexFormat == IndexFormat::UInt16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT));
+	if (!m_ibo)
+	{
+		// TODO: рисование если нет индексного буфера
+	}
+	else
+	{
+		const GLenum type = (m_indexFormat == IndexFormat::UInt8 ? GL_UNSIGNED_BYTE
+			: (m_indexFormat == IndexFormat::UInt16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT));
 
-	glDrawElements(GL_TRIANGLES, m_indexNum, type, nullptr);
+		glDrawElements(GL_TRIANGLES, m_indexNum, type, nullptr);
+	}
 }
 
 void GLVertexArray::createHandle()

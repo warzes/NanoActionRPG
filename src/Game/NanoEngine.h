@@ -272,7 +272,7 @@ using GLBufferRef = std::shared_ptr<GLBuffer>;
 class GLVertexArray final
 {
 public:
-	GLVertexArray() = delete;
+	GLVertexArray();
 	GLVertexArray(GLBufferRef vbo, size_t vertexSize, const std::vector<AttribFormat>& attribFormats);
 	GLVertexArray(GLBufferRef vbo, size_t vertexSize, GLBufferRef ibo, size_t indexNum, IndexFormat indexFormat, const std::vector<AttribFormat>& attribFormats);
 	template<typename T>
