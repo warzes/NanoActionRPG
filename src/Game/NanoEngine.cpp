@@ -236,6 +236,30 @@ void GLProgramPipeline::Bind()
 	glBindProgramPipeline(m_handle);
 }
 
+GLint GLProgramPipeline::GetVertexUniform(const char* name) const
+{
+	if (!m_vertexShader) return -1;
+	return glGetUniformLocation(*m_vertexShader, name);
+}
+
+GLint GLProgramPipeline::SetGeometryUniform(const char* name) const
+{
+	if (!m_geometryShader) return -1;
+	return glGetUniformLocation(*m_geometryShader, name);
+}
+
+GLint GLProgramPipeline::SetFragmentUniform(const char* name) const
+{
+	if (!m_fragmentShader) return -1;
+	return glGetUniformLocation(*m_fragmentShader, name);
+}
+
+GLint GLProgramPipeline::SetComputeUniform(const char* name) const
+{
+	if (!m_computeShader) return -1;
+	return glGetUniformLocation(*m_computeShader, name);
+}
+
 void GLProgramPipeline::createHandle()
 {
 	glCreateProgramPipelines(1, &m_handle);
@@ -1157,7 +1181,7 @@ int Window::GetHeight()
 
 bool Window::IsResize()
 {
-	return false;
+	return Engine.IsResize;
 }
 
 #pragma endregion
