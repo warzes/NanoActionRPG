@@ -371,9 +371,6 @@ void Example003()
 	Camera camera;
 	camera.SetPosition({ 0.0f, 0.3f, -1.0f });
 
-	glEnable(GL_DEPTH_TEST);
-	//glDepthMask(GL_TRUE);
-
 	class GBuffer
 	{
 	public:
@@ -392,33 +389,29 @@ out outBlock
 	vec3 FragPosInViewSpace; // POSITION
 	vec3 Color;
 	vec3 Normal;
-	vec2 TexCoord;
+	vec2 TexCoords;
 } o;
 
-layout (location = 0) in vec3 Position;
-layout (location = 1) in vec3 Color;
-layout (location = 2) in vec3 Normal;
-layout (location = 3) in vec2 TexCoord;
+layout (location = 0) in vec3 aPosition;
+layout (location = 1) in vec3 aColor;
+layout (location = 2) in vec3 aNormal;
+layout (location = 3) in vec2 aTexCoords;
 
-layout (location = 0) uniform mat4 ProjectionMatrix;
-layout (location = 1) uniform mat4 ViewMatrix;
-layout (location = 2) uniform mat4 WorldMatrix;
+layout (location = 0) uniform mat4 uProjectionMatrix;
+layout (location = 1) uniform mat4 uViewMatrix;
+layout (location = 2) uniform mat4 uWorldMatrix;
 
 void main()
 {
-	const vec4 WorldPos = WorldMatrix * vec4(Position, 1.0);
-	const mat4 VWMatrix = ViewMatrix * WorldMatrix;
-	const vec4 FragPosInViewSpace = VWMatrix * vec4(Position, 1.0);
-	const mat3 NormalMatrix = transpose(inverse(mat3(WorldMatrix)));
+	vec4 WorldPos = uWorldMatrix * vec4(aPosition, 1.0);
+	mat3 NormalMatrix = transpose(inverse(mat3(uWorldMatrix)));
 
-	//o.FragPosInViewSpace = FragPosInViewSpace.xyz; // старый вариант
 	o.FragPosInViewSpace = WorldPos.xyz;
-	o.Color = Color;
-	//o.Normal = normalize(mat3(transpose(inverse(VWMatrix))) * Normal); // старый вариант
-	o.Normal = NormalMatrix * Normal;
-	o.TexCoord = TexCoord;
-	
-	gl_Position = ProjectionMatrix * FragPosInViewSpace;
+	o.Color = aColor;
+	o.TexCoords = aTexCoords;
+	o.Normal = NormalMatrix * aNormal;
+
+	gl_Position = uProjectionMatrix * uViewMatrix * WorldPos;
 }
 )";
 #pragma endregion
@@ -437,10 +430,10 @@ in inBlock
 
 layout (location = 0) out vec3 outPosition;
 layout (location = 1) out vec3 outNormal;
-layout (location = 2) out vec4 outAlbedo;
+layout (location = 2) out vec4 outAlbedoSpec;
 
 layout(binding = 0) uniform sampler2D DiffuseTexture;
-layout(binding = 1) uniform sampler2D SpecularTexture;
+layout(binding = 2) uniform sampler2D SpecularTexture;
 
 void main()
 {
@@ -450,8 +443,8 @@ void main()
 
 	outPosition = i.FragPosInViewSpace;
 	outNormal = normalize(i.Normal);
-	outAlbedo.rgb = diffuseTex.rgb * i.Color;
-	outAlbedo.a = texture(SpecularTexture, i.TexCoord).r;
+	outAlbedoSpec.rgb = diffuseTex.rgb * i.Color;
+	outAlbedoSpec.a = texture(SpecularTexture, i.TexCoord).r;
 }
 )";
 #pragma endregion
@@ -499,8 +492,7 @@ void main()
 
 			position.reset(new GLTexture2D(GL_RGBA32F, GL_RGBA, GL_FLOAT, width, height, nullptr, GL_NEAREST));
 			normal.reset(new GLTexture2D(GL_RGBA32F, GL_RGBA, GL_FLOAT, width, height, nullptr, GL_NEAREST));
-			albedo.reset(new GLTexture2D(GL_RGBA32F, GL_RGBA, GL_FLOAT, width, height, nullptr, GL_NEAREST));
-			//albedo.reset(new GLTexture2D(GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, width, height, nullptr, GL_NEAREST));
+			albedo.reset(new GLTexture2D(GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, width, height, nullptr, GL_NEAREST));
 			depth.reset(new GLTexture2D(GL_DEPTH_COMPONENT32, GL_DEPTH, GL_FLOAT, width, height, nullptr, GL_NEAREST));
 
 			fbo.reset( new GLFramebuffer({ position, normal, albedo }, depth) );
@@ -584,23 +576,10 @@ void main()
 	const vec3 Diffuse = diffuseTex.rgb;
 	const float Specular = diffuseTex.a;
 
-	// directional light
-	//const vec3 l = normalize(vec3(-0.7, 0.3, -0.1));
-	//const vec3 viewDir = normalize(uCameraPos - fragPos);
-	//const vec3 h = normalize(l + viewDir);
-	//vec3 color = 
-	//	// diffuse
-	//	0.7 * Diffuse * max(0.0, dot(normalTex, l)) +
-	//	// specular
-	//	0.4 * pow(max(0.0, dot(h, normalTex)), 32.0) + 
-	//	// ambient
-	//	0.2 * Diffuse;
-	//outFragColor.rgb = pow(color, vec3(1.0f/2.2f));
-	//outFragColor.a;
-
-	// point light
 	vec3 lighting = Diffuse * 0.1; // hard-coded ambient component
-	const vec3 viewDir = normalize(uCameraPos - fragPos);
+	vec3 viewDir = normalize(uCameraPos - fragPos);
+
+	// point lights
 	for(int i = 0; i < NR_LIGHTS; ++i)
 	{
 		// calculate distance between light source and current fragment
@@ -621,8 +600,9 @@ void main()
 			lighting += diffuse + specular;
 		}
 	}
-	//outFragColor = pow(color, vec3(1.0f/2.2f));
+	
 	outFragColor = vec4(lighting, 1.0);
+	//outFragColor = pow(outFragColor, vec3(1.0f/2.2f));
 }
 )";
 #pragma endregion
@@ -670,9 +650,32 @@ void main()
 
 	LightingPassFB lightingPassFB;
 	lightingPassFB.Create(Window::GetWidth(), Window::GetHeight());
+
 	GLVertexArrayRef VAOEmpty{ new GLVertexArray };
 
 	ModelRef model{ new Model("Data/Models/sponza/sponza.obj") };
+
+#pragma region lighting info
+	const unsigned int NR_LIGHTS = 32;
+	std::vector<glm::vec3> lightPositions;
+	std::vector<glm::vec3> lightColors;
+	srand(123);
+	for (unsigned int i = 0; i < NR_LIGHTS; i++)
+	{
+		// calculate slightly random offsets
+		float xPos = static_cast<float>(((rand() % 100) / 100.0) * 6.0 - 3.0);
+		float yPos = static_cast<float>(((rand() % 100) / 100.0) * 6.0 - 4.0);
+		float zPos = static_cast<float>(((rand() % 100) / 100.0) * 6.0 - 3.0);
+		lightPositions.push_back(glm::vec3(xPos, yPos, zPos));
+		// also calculate random color
+		float rColor = static_cast<float>(((rand() % 100) / 200.0f) + 0.5); // between 0.5 and 1.)
+		float gColor = static_cast<float>(((rand() % 100) / 200.0f) + 0.5); // between 0.5 and 1.)
+		float bColor = static_cast<float>(((rand() % 100) / 200.0f) + 0.5); // between 0.5 and 1.)
+		lightColors.push_back(glm::vec3(rColor, gColor, bColor));
+	}
+
+#pragma endregion
+
 
 	while (!Window::ShouldClose())
 	{
@@ -743,9 +746,25 @@ void main()
 
 		// Lighting pass framebuffer
 		{
-			glDisable(GL_DEPTH_TEST);
 			lightingPassFB.Bind();
 			lightingPassFB.program->SetFragmentUniform(0, camera.position);
+			// send light relevant uniforms
+			for (unsigned int i = 0; i < lightPositions.size(); i++)
+			{
+				lightingPassFB.program->SetFragmentUniform(lightingPassFB.program->GetFragmentUniform("uLights[" + std::to_string(i) + "].position"), lightPositions[i]);
+				lightingPassFB.program->SetFragmentUniform(lightingPassFB.program->GetFragmentUniform("uLights[" + std::to_string(i) + "].color"), lightColors[i]);
+				// update attenuation parameters and calculate radius
+				const float constant = 1.0f; // note that we don't send this to the shader, we assume it is always 1.0 (in our case)
+				const float linear = 0.7f;
+				const float quadratic = 1.8f;
+				lightingPassFB.program->SetFragmentUniform(lightingPassFB.program->GetFragmentUniform("uLights[" + std::to_string(i) + "].linear"), linear);
+				lightingPassFB.program->SetFragmentUniform(lightingPassFB.program->GetFragmentUniform("uLights[" + std::to_string(i) + "].quadratic"), quadratic);
+				// then calculate radius of light volume/sphere
+				const float maxBrightness = std::fmaxf(std::fmaxf(lightColors[i].x, lightColors[i].y), lightColors[i].z);
+				float radius = (-linear + std::sqrt(linear * linear - 4 * quadratic * (constant - (256.0f / 5.0f) * maxBrightness))) / (2.0f * quadratic);
+				lightingPassFB.program->SetFragmentUniform(lightingPassFB.program->GetFragmentUniform("uLights[" + std::to_string(i) + "].radius"), radius);
+			}
+
 			gbuffer.BindTextures();
 			VAOEmpty->Bind();
 			glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -753,6 +772,7 @@ void main()
 
 		// Main frame
 		{
+			glDisable(GL_DEPTH_TEST);
 			Renderer::MainFrameBuffer();
 			Renderer::BlitFrameBuffer(lightingPassFB.fbo, nullptr,
 				0, 0, Window::GetWidth(), Window::GetHeight(),
@@ -765,6 +785,9 @@ void main()
 		Window::Swap();
 #pragma endregion
 	}
+
+	gbuffer.Destroy();
+	lightingPassFB.Destroy();
 
 	IMGUI::Close();
 	Renderer::Close();

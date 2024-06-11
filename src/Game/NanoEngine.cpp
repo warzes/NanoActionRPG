@@ -236,28 +236,28 @@ void GLProgramPipeline::Bind()
 	glBindProgramPipeline(m_handle);
 }
 
-GLint GLProgramPipeline::GetVertexUniform(const char* name) const
+GLint GLProgramPipeline::GetVertexUniform(const std::string& name) const
 {
 	if (!m_vertexShader) return -1;
-	return glGetUniformLocation(*m_vertexShader, name);
+	return glGetUniformLocation(*m_vertexShader, name.c_str());
 }
 
-GLint GLProgramPipeline::SetGeometryUniform(const char* name) const
+GLint GLProgramPipeline::GetGeometryUniform(const std::string& name) const
 {
 	if (!m_geometryShader) return -1;
-	return glGetUniformLocation(*m_geometryShader, name);
+	return glGetUniformLocation(*m_geometryShader, name.c_str());
 }
 
-GLint GLProgramPipeline::SetFragmentUniform(const char* name) const
+GLint GLProgramPipeline::GetFragmentUniform(const std::string& name) const
 {
 	if (!m_fragmentShader) return -1;
-	return glGetUniformLocation(*m_fragmentShader, name);
+	return glGetUniformLocation(*m_fragmentShader, name.c_str());
 }
 
-GLint GLProgramPipeline::SetComputeUniform(const char* name) const
+GLint GLProgramPipeline::GetComputeUniform(const std::string& name) const
 {
 	if (!m_computeShader) return -1;
-	return glGetUniformLocation(*m_computeShader, name);
+	return glGetUniformLocation(*m_computeShader, name.c_str());
 }
 
 void GLProgramPipeline::createHandle()

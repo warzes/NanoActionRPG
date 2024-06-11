@@ -222,10 +222,10 @@ public:
 	template <typename T>
 	void SetComputeUniform(GLint location, const T& value);
 
-	[[nodiscard]] GLint GetVertexUniform(const char* name) const;
-	[[nodiscard]] GLint SetGeometryUniform(const char* name) const;
-	[[nodiscard]] GLint SetFragmentUniform(const char* name) const;
-	[[nodiscard]] GLint SetComputeUniform(const char* name) const;
+	[[nodiscard]] GLint GetVertexUniform(const std::string& name) const;
+	[[nodiscard]] GLint GetGeometryUniform(const std::string& name) const;
+	[[nodiscard]] GLint GetFragmentUniform(const std::string& name) const;
+	[[nodiscard]] GLint GetComputeUniform(const std::string& name) const;
 
 	void Bind();
 
