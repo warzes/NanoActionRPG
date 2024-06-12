@@ -371,148 +371,7 @@ void Example003()
 	Camera camera;
 	camera.SetPosition({ 0.0f, 0.3f, -1.0f });
 
-	class GBuffer
-	{
-	public:
-		void Create(int inWidth, int inHeight)
-		{
-			Resize(inWidth, inHeight);
-
-#pragma region VertexShader
-			const char* vertSource = R"(
-#version 460
-
-out gl_PerVertex { vec4 gl_Position; };
-
-out outBlock
-{
-	vec3 FragPosInViewSpace; // POSITION
-	vec3 Color;
-	vec3 Normal;
-	vec2 TexCoords;
-} o;
-
-layout (location = 0) in vec3 aPosition;
-layout (location = 1) in vec3 aColor;
-layout (location = 2) in vec3 aNormal;
-layout (location = 3) in vec2 aTexCoords;
-
-layout (location = 0) uniform mat4 uProjectionMatrix;
-layout (location = 1) uniform mat4 uViewMatrix;
-layout (location = 2) uniform mat4 uWorldMatrix;
-
-void main()
-{
-	vec4 WorldPos = uWorldMatrix * vec4(aPosition, 1.0);
-	mat3 NormalMatrix = transpose(inverse(mat3(uWorldMatrix)));
-
-	o.FragPosInViewSpace = WorldPos.xyz;
-	o.Color = aColor;
-	o.TexCoords = aTexCoords;
-	o.Normal = NormalMatrix * aNormal;
-
-	gl_Position = uProjectionMatrix * uViewMatrix * WorldPos;
-}
-)";
-#pragma endregion
-
-#pragma region FragmentShader
-			const char* fragSource = R"(
-#version 460
-
-in inBlock
-{
-	vec3 FragPosInViewSpace;
-	vec3 Color;
-	vec3 Normal;
-	vec2 TexCoord;
-} i;
-
-layout (location = 0) out vec3 outPosition;
-layout (location = 1) out vec3 outNormal;
-layout (location = 2) out vec4 outAlbedoSpec;
-
-layout(binding = 0) uniform sampler2D DiffuseTexture;
-layout(binding = 2) uniform sampler2D SpecularTexture;
-
-void main()
-{
-	vec4 diffuseTex = texture(DiffuseTexture, i.TexCoord);
-	if (diffuseTex.a < 0.2)
-		discard;
-
-	outPosition = i.FragPosInViewSpace;
-	outNormal = normalize(i.Normal);
-	outAlbedoSpec.rgb = diffuseTex.rgb * i.Color;
-	outAlbedoSpec.a = texture(SpecularTexture, i.TexCoord).r;
-}
-)";
-#pragma endregion
-
-			program = std::make_shared<GLProgramPipeline>(vertSource, fragSource);
-		}
-		void Destroy()
-		{
-			program.reset();
-			fbo.reset();
-			position.reset();
-			normal.reset();
-			albedo.reset();
-			depth.reset();
-			width = height = 0;
-		}
-
-		void Bind()
-		{
-			constexpr auto depthClearVal = 1.0f;
-
-			fbo->ClearFramebuffer(GL_COLOR, 0, glm::value_ptr(glm::vec4(0.0f)));
-			fbo->ClearFramebuffer(GL_COLOR, 1, glm::value_ptr(glm::vec4(0.0f)));
-			fbo->ClearFramebuffer(GL_COLOR, 2, glm::value_ptr(glm::vec4(0.0f)));
-
-			fbo->ClearFramebuffer(GL_DEPTH, 0, &depthClearVal);
-
-			fbo->Bind();
-			Renderer::SetViewport(0, 0, width, height);
-
-			program->Bind();
-		}
-
-		void BindTextures()
-		{
-			position->Bind(0);
-			normal->Bind(1);
-			albedo->Bind(2);
-		}
-
-		void Resize(int inWidth, int inHeight)
-		{
-			width = inWidth;
-			height = inHeight;
-
-			position.reset(new GLTexture2D(GL_RGBA32F, GL_RGBA, GL_FLOAT, width, height, nullptr, GL_NEAREST));
-			normal.reset(new GLTexture2D(GL_RGBA32F, GL_RGBA, GL_FLOAT, width, height, nullptr, GL_NEAREST));
-			albedo.reset(new GLTexture2D(GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, width, height, nullptr, GL_NEAREST));
-			depth.reset(new GLTexture2D(GL_DEPTH_COMPONENT32, GL_DEPTH, GL_FLOAT, width, height, nullptr, GL_NEAREST));
-
-			fbo.reset( new GLFramebuffer({ position, normal, albedo }, depth) );
-		}
-
-		GLFramebufferRef fbo = nullptr;
-
-		GLTexture2DRef position = nullptr;
-		GLTexture2DRef normal = nullptr;
-		GLTexture2DRef albedo = nullptr;
-		GLTexture2DRef depth = nullptr;
-
-		GLProgramPipelineRef program = nullptr;
-
-		int width = 0;
-		int height = 0;
-	};
-
-	GBuffer gbuffer;
-	gbuffer.Create(Window::GetWidth(), Window::GetHeight());
+	GBufferRef gbuffer{ new GBuffer(Window::GetWidth(), Window::GetHeight()) };
 	
 	class LightingPassFB
 	{
@@ -562,7 +421,7 @@ struct Light {
 	float quadratic;
 	float radius;
 };
-const int NR_LIGHTS = 32;
+const int NR_LIGHTS = 64;
 
 layout (location = 0) uniform vec3 uCameraPos;
 layout (location = 1) uniform Light uLights[NR_LIGHTS];
@@ -654,9 +513,13 @@ void main()
 	GLVertexArrayRef VAOEmpty{ new GLVertexArray };
 
 	ModelRef model{ new Model("Data/Models/sponza/sponza.obj") };
+	//ModelRef model{ new Model("Data/Models/sponza2/sponza.obj") };
+	//ModelRef model{ new Model("Data/Models/holodeck/holodeck.obj") };
+	//ModelRef model{ new Model("Data/Models/lost-empire/lost_empire.obj") };
+	//ModelRef model{ new Model("Data/Models/sibenik/sibenik.obj") };
 
 #pragma region lighting info
-	const unsigned int NR_LIGHTS = 32;
+	const unsigned int NR_LIGHTS = 64;
 	std::vector<glm::vec3> lightPositions;
 	std::vector<glm::vec3> lightColors;
 	srand(123);
@@ -666,6 +529,13 @@ void main()
 		float xPos = static_cast<float>(((rand() % 100) / 100.0) * 6.0 - 3.0);
 		float yPos = static_cast<float>(((rand() % 100) / 100.0) * 6.0 - 4.0);
 		float zPos = static_cast<float>(((rand() % 100) / 100.0) * 6.0 - 3.0);
+
+		//auto bmin = glm::abs(model->GetBounding().min);
+		//auto bsize = bmin + glm::abs(model->GetBounding().max);
+		//float xPos = static_cast<float>(rand() % (int)bsize.x - bmin.x);
+		//float yPos = static_cast<float>(rand() % (int)bsize.y - bmin.y);
+		//float zPos = static_cast<float>(rand() % (int)bsize.z - bmin.z);
+
 		lightPositions.push_back(glm::vec3(xPos, yPos, zPos));
 		// also calculate random color
 		float rColor = static_cast<float>(((rand() % 100) / 200.0f) + 0.5); // between 0.5 and 1.)
@@ -691,7 +561,7 @@ void main()
 		{
 			perspective = glm::perspective(glm::radians(60.0f), (float)Window::GetWidth() / (float)Window::GetHeight(), 0.1f, 1000.f);
 			glViewport(0, 0, Window::GetWidth(), Window::GetHeight());
-			gbuffer.Resize(Window::GetWidth(), Window::GetHeight());
+			gbuffer->Resize(Window::GetWidth(), Window::GetHeight());
 			lightingPassFB.Resize(Window::GetWidth(), Window::GetHeight());
 		}
 
@@ -737,11 +607,11 @@ void main()
 		// GBuffer
 		{
 			glEnable(GL_DEPTH_TEST);
-			gbuffer.Bind();
-			gbuffer.program->SetVertexUniform(0, perspective);
-			gbuffer.program->SetVertexUniform(1, camera.GetViewMatrix());
-			gbuffer.program->SetVertexUniform(2, glm::mat4(1.0f));
-			model->Draw(gbuffer.program);
+			gbuffer->BindForWriting();
+			gbuffer->GetProgram()->SetVertexUniform(0, perspective);
+			gbuffer->GetProgram()->SetVertexUniform(1, camera.GetViewMatrix());
+			gbuffer->GetProgram()->SetVertexUniform(2, glm::mat4(1.0f));
+			model->Draw(gbuffer->GetProgram());
 		}
 
 		// Lighting pass framebuffer
@@ -765,7 +635,7 @@ void main()
 				lightingPassFB.program->SetFragmentUniform(lightingPassFB.program->GetFragmentUniform("uLights[" + std::to_string(i) + "].radius"), radius);
 			}
 
-			gbuffer.BindTextures();
+			gbuffer->BindForReading();
 			VAOEmpty->Bind();
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 		}
@@ -786,7 +656,7 @@ void main()
 #pragma endregion
 	}
 
-	gbuffer.Destroy();
+	gbuffer.reset();
 	lightingPassFB.Destroy();
 
 	IMGUI::Close();

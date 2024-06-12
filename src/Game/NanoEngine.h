@@ -127,8 +127,8 @@ public:
 	[[nodiscard]] bool Overlaps(const AABB& anotherAABB);
 	[[nodiscard]] bool Inside(const glm::vec3& point);
 
-	glm::vec3 min = glm::vec3(FLT_MAX);
-	glm::vec3 max = glm::vec3(-FLT_MAX);
+	glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
+	glm::vec3 max = glm::vec3(std::numeric_limits<float>::lowest());
 };
 
 #pragma endregion
@@ -413,6 +413,43 @@ namespace Renderer
 	void SetViewport(GLint x, GLint y, GLsizei width, GLsizei height);
 	void SetScissor(GLint x, GLint y, GLsizei width, GLsizei height);
 }
+
+#pragma endregion
+
+//==============================================================================
+// Graphics
+//==============================================================================
+#pragma region Graphics
+
+class GBuffer final
+{
+public:
+	GBuffer() = delete;
+	GBuffer(int width, int height);
+	~GBuffer();
+
+	void Resize(int width, int iheight);
+
+	void BindForWriting();
+	void BindForReading();
+
+	GLProgramPipelineRef GetProgram();
+
+private:
+	GLFramebufferRef m_fbo = nullptr;
+
+	GLTexture2DRef m_position = nullptr;
+	GLTexture2DRef m_normal = nullptr;
+	GLTexture2DRef m_albedo = nullptr;
+	GLTexture2DRef m_depth = nullptr;
+
+	GLProgramPipelineRef m_program = nullptr;
+
+	int m_width = 0;
+	int m_height = 0;
+
+};
+using GBufferRef = std::shared_ptr<GBuffer>;
 
 #pragma endregion
 

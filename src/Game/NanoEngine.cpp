@@ -744,6 +744,157 @@ void Renderer::SetScissor(GLint x, GLint y, GLsizei width, GLsizei height)
 #pragma endregion
 
 //==============================================================================
+// Graphics
+//==============================================================================
+#pragma region Graphics
+
+GBuffer::GBuffer(int width, int height)
+{
+	Resize(width, height);
+
+#pragma region VertexShader
+	const char* vertSource = R"(
+#version 460 core
+#extension GL_ARB_bindless_texture : require
+
+// -----------  Per vertex  -----------
+layout (location = 0) in vec3 aPosition;
+layout (location = 1) in vec3 aColor;
+layout (location = 2) in vec3 aNormal;
+layout (location = 3) in vec2 aTexCoords;
+layout (location = 4) in vec3 aTangent;
+// ----------- Per instance -----------
+//layout (location = 5) in mat4 aModel; // TODO:
+//      location = 6
+//      location = 7
+//layout (location = 8) in int aMaterialIdx;
+//layout (location = 9) in mat3 aNormalMat;
+//      location = 10
+//      location = 11
+
+// --------- Output Variables ---------
+
+out gl_PerVertex { vec4 gl_Position; };
+
+out outBlock
+{
+	vec3 FragPosInViewSpace; // POSITION
+	vec3 Color;
+	vec3 Normal;
+	vec2 TexCoords;
+} o;
+
+// ------------- Uniform --------------
+layout (location = 0) uniform mat4 uProjectionMatrix;
+layout (location = 1) uniform mat4 uViewMatrix;
+layout (location = 2) uniform mat4 uWorldMatrix;
+
+void main()
+{
+	vec4 worldPos = uWorldMatrix * vec4(aPosition, 1.0);
+	mat3 NormalMatrix = inverse(mat3(uWorldMatrix));
+
+	o.FragPosInViewSpace = worldPos.xyz;
+	o.Color = aColor;
+	o.TexCoords = aTexCoords;
+	o.Normal = NormalMatrix * aNormal;
+
+	gl_Position = uProjectionMatrix * uViewMatrix * worldPos;
+}
+)";
+#pragma endregion
+
+#pragma region FragmentShader
+	const char* fragSource = R"(
+#version 460 core
+#extension GL_ARB_bindless_texture : require
+
+in inBlock
+{
+	vec3 FragPosInViewSpace;
+	vec3 Color;
+	vec3 Normal;
+	vec2 TexCoord;
+} i;
+
+layout (location = 0) out vec3 outPosition;
+layout (location = 1) out vec3 outNormal;
+layout (location = 2) out vec4 outAlbedoSpec;
+
+layout(binding = 0) uniform sampler2D DiffuseTexture;
+layout(binding = 2) uniform sampler2D SpecularTexture;
+
+void main()
+{
+	vec4 diffuseTex = texture(DiffuseTexture, i.TexCoord);
+	if (diffuseTex.a < 0.2)
+		discard;
+
+	outPosition = i.FragPosInViewSpace;
+	outNormal = normalize(i.Normal);
+	outAlbedoSpec.rgb = diffuseTex.rgb * i.Color;
+	outAlbedoSpec.a = texture(SpecularTexture, i.TexCoord).r;
+}
+)";
+#pragma endregion
+
+	m_program = std::make_shared<GLProgramPipeline>(vertSource, fragSource);
+}
+
+GBuffer::~GBuffer()
+{
+	m_program.reset();
+	m_fbo.reset();
+	m_position.reset();
+	m_normal.reset();
+	m_albedo.reset();
+	m_depth.reset();
+}
+
+void GBuffer::Resize(int width, int height)
+{
+	m_width = width;
+	m_height = height;
+
+	m_position.reset(new GLTexture2D(GL_RGBA32F, GL_RGBA, GL_FLOAT, width, height, nullptr, GL_NEAREST));
+	m_normal.reset(new GLTexture2D(GL_RGBA32F, GL_RGBA, GL_FLOAT, width, height, nullptr, GL_NEAREST));
+	m_albedo.reset(new GLTexture2D(GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, width, height, nullptr, GL_NEAREST));
+	m_depth.reset(new GLTexture2D(GL_DEPTH_COMPONENT32F, GL_DEPTH, GL_FLOAT, width, height, nullptr, GL_NEAREST));
+
+	m_fbo.reset(new GLFramebuffer({ m_position, m_normal, m_albedo }, m_depth));
+}
+
+void GBuffer::BindForWriting()
+{
+	constexpr auto depthClearVal = 1.0f;
+
+	m_fbo->ClearFramebuffer(GL_COLOR, 0, glm::value_ptr(glm::vec4(0.0f)));
+	m_fbo->ClearFramebuffer(GL_COLOR, 1, glm::value_ptr(glm::vec4(0.0f)));
+	m_fbo->ClearFramebuffer(GL_COLOR, 2, glm::value_ptr(glm::vec4(0.0f)));
+
+	m_fbo->ClearFramebuffer(GL_DEPTH, 0, &depthClearVal);
+
+	m_fbo->Bind();
+	Renderer::SetViewport(0, 0, m_width, m_height);
+
+	m_program->Bind();
+}
+
+void GBuffer::BindForReading()
+{
+	m_position->Bind(0);
+	m_normal->Bind(1);
+	m_albedo->Bind(2);
+}
+
+GLProgramPipelineRef GBuffer::GetProgram()
+{
+	return m_program;
+}
+
+#pragma endregion
+
+//==============================================================================
 // RenderWorld
 //==============================================================================
 #pragma region RenderWorld

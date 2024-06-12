@@ -5,6 +5,12 @@ VisualStudioVersion = 17.11.34929.205
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Game", "Game\Game.vcxproj", "{A55D029D-1C24-46BD-B5DC-6ED8F9710EE3}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Элементы решения", "Элементы решения", "{AB846179-C736-4958-B668-9227ADB4DBBC}"
+	ProjectSection(SolutionItems) = preProject
+		..\README.md = ..\README.md
+		ref.md = ref.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
