@@ -140,6 +140,7 @@
     <ClInclude Include="..\3rdparty\imgui\imstb_truetype.h" />
     <ClInclude Include="..\3rdparty\Profiler.h" />
     <ClInclude Include="..\3rdparty\stb\stb_image.h" />
+    <ClInclude Include="Current.h" />
     <ClInclude Include="Example.h" />
     <ClInclude Include="NanoEngine.h" />
   </ItemGroup>

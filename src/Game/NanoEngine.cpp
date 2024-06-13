@@ -1036,6 +1036,9 @@ void Camera::MoveBy(float distance)
 
 void Camera::StrafeBy(float distance)
 {
+#if !defined(GLM_FORCE_LEFT_HANDED)
+	distance = -distance;
+#endif
 	const glm::vec3 strafeVector = glm::normalize(glm::cross(GetNormalizedViewVector(), up)) * distance;
 	position += strafeVector;
 	target += strafeVector;
@@ -1043,7 +1046,11 @@ void Camera::StrafeBy(float distance)
 
 void Camera::RotateLeftRight(float angleInDegrees)
 {
+#if !defined(GLM_FORCE_LEFT_HANDED)
+	angleInDegrees = -angleInDegrees;
+#endif
 	const glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(angleInDegrees), glm::vec3(0.0f, 1.0f, 0.0f)); // TODO: а может Up?
+
 	const glm::vec4 rotatedViewVector = rotationMatrix * glm::vec4(GetNormalizedViewVector(), 0.0f);
 	target = position + glm::vec3(rotatedViewVector);
 }

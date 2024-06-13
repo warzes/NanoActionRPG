@@ -64,6 +64,7 @@
       <Filter>3rdparty</Filter>
     </ClInclude>
     <ClInclude Include="Example.h" />
+    <ClInclude Include="Current.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="3rdparty">

@@ -72,20 +72,17 @@ out outBlock
 layout (location = 0) uniform mat4 uProjectionMatrix;
 layout (location = 1) uniform mat4 uViewMatrix;
 layout (location = 2) uniform mat4 uWorldMatrix;
-layout (location = 3) uniform bool uInvertedNormals;
 
 void main()
 {	
-	vec4 viewPos = uViewMatrix * uWorldMatrix * vec4(aPosition, 1.0);
-
-	mat3 normalMatrix = transpose(inverse(mat3(uViewMatrix * uWorldMatrix))); // TODO: transpose?
-	
-	o.FragPosInViewSpace = viewPos.xyz;
+	vec4 worldPos = uWorldMatrix * vec4(aPosition, 1.0);
+	mat3 NormalMatrix = inverse(mat3(uWorldMatrix));
+	o.FragPosInViewSpace = worldPos.xyz;
 	o.Color = aColor;
-	o.Normal = normalMatrix * (uInvertedNormals ? -aNormal : aNormal);
 	o.TexCoords = aTexCoords;
+	o.Normal = NormalMatrix * aNormal;
+	gl_Position = uProjectionMatrix * uViewMatrix * worldPos;
 
-	gl_Position = uProjectionMatrix * viewPos;
 }
 )";
 #pragma endregion
@@ -119,6 +116,7 @@ void main()
 	outNormal = normalize(i.Normal);
 	outAlbedoSpec.rgb = diffuseTex.rgb * i.Color;
 	outAlbedoSpec.a = texture(SpecularTexture, i.TexCoord).r;
+
 }
 )";
 #pragma endregion
@@ -789,7 +787,6 @@ void main()
 			gbuffer->GetProgram()->SetVertexUniform(0, perspective);
 			gbuffer->GetProgram()->SetVertexUniform(1, camera.GetViewMatrix());
 			gbuffer->GetProgram()->SetVertexUniform(2, glm::mat4(1.0f));
-			gbuffer->GetProgram()->SetVertexUniform(3, false);
 			model->Draw(gbuffer->GetProgram());
 		}
 
