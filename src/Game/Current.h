@@ -1,5 +1,7 @@
 #pragma once
 
+https://github.com/timurson/DeferredShading
+https://github.com/swq0553/DeferredShading
 
 void Example00X()
 {
@@ -22,144 +24,47 @@ void Example00X()
 	Camera camera;
 	camera.SetPosition({ 0.0f, 0.3f, -1.0f });
 
-	UtilsExample::GBufferRef gbuffer{ new UtilsExample::GBuffer(Window::GetWidth(), Window::GetHeight()) };
+	const float INITIAL_POINT_LIGHT_RADIUS = 0.663f;
+	const unsigned int LIGHT_GRID_WIDTH = 10;  // point light grid size
+	const unsigned int LIGHT_GRID_HEIGHT = 3;  // point light vertical grid height
 
-	class LightingPassFB
+	bool enableShadows = true;
+	bool drawPointLights = false;
+	bool showDepthMap = false;
+	bool drawPointLightsWireframe = true;
+	glm::vec3 diffuseColor = glm::vec3(0.847f, 0.52f, 0.19f);
+	glm::vec4 specularColor = glm::vec4(1.0f, 1.0f, 1.0f, 0.8f);
+	float glossiness = 16.0f;
+	float gLinearAttenuation = 0.09f;
+	float gQuadraticAttenuation = 0.032f;
+	float pointLightIntensity = 0.736f;
+	float pointLightRadius = INITIAL_POINT_LIGHT_RADIUS;
+	float pointLightVerticalOffset = 0.636f;
+	float pointLightSeparation = 0.670f;
+	const int totalLights = LIGHT_GRID_WIDTH * LIGHT_GRID_WIDTH * LIGHT_GRID_HEIGHT;
+
+	class SceneLight
 	{
 	public:
-		void Create(int inWidth, int inHeight)
-		{
-			Resize(inWidth, inHeight);
-
-#pragma region VertexShader
-			const char* vertSource = R"(
-#version 460
-
-out gl_PerVertex { vec4 gl_Position; };
-
-out vec2 TexCoord;
-
-// full screen quad vertices
-const vec2 verts[] = { vec2(-1.0f, 1.0f), vec2(1.0f, 1.0f), vec2(1.0f,-1.0f), vec2(-1.0f,-1.0f) };
-const vec2 uvs[] = { vec2(0.0f, 1.0f), vec2(1.0f, 1.0f), vec2(1.0f, 0.0f), vec2(0.0f, 0.0f) };
-const uint index[] = { 0, 3, 2, 2, 1, 0 };
-
-void main()
-{
-	TexCoord = uvs[index[gl_VertexID]];
-	gl_Position = vec4(verts[index[gl_VertexID]], 0.0, 1.0);
-}
-)";
-#pragma endregion
-
-#pragma region FragmentShader
-			const char* fragSource = R"(
-#version 460
-
-out vec4 outFragColor;
-
-in vec2 TexCoords;
-
-layout (binding = 0) uniform sampler2D positionTexture;
-layout (binding = 1) uniform sampler2D normalTexture;
-layout (binding = 2) uniform sampler2D albedoTexture;
-
-struct Light {
-	vec3 position;
-	vec3 color;
-
-	float linear;
-	float quadratic;
-	float radius;
-};
-const int NR_LIGHTS = 64;
-
-layout (location = 0) uniform vec3 uCameraPos;
-layout (location = 1) uniform Light uLights[NR_LIGHTS];
-
-void main()
-{
-	// retrieve data form gbuffer
-	const vec3 fragPos = texture(positionTexture, TexCoords).rgb;
-	const vec3 normalTex = texture(normalTexture, TexCoords).rgb;
-	const vec4 diffuseTex = texture(albedoTexture, TexCoords);
-	const vec3 Diffuse = diffuseTex.rgb;
-	const float Specular = diffuseTex.a;
-
-	vec3 lighting = Diffuse * 0.1; // hard-coded ambient component
-	vec3 viewDir = normalize(uCameraPos - fragPos);
-
-	// point lights
-	for(int i = 0; i < NR_LIGHTS; ++i)
-	{
-		// calculate distance between light source and current fragment
-		float distance = length(uLights[i].position - fragPos);
-		if (distance < uLights[i].radius)
-		{
-			// diffuse
-			vec3 lightDir = normalize(uLights[i].position - fragPos);
-			vec3 diffuse = max(dot(normalTex, lightDir), 0.0) * Diffuse * uLights[i].color;
-			// specular
-			vec3 halfwayDir = normalize(lightDir + viewDir);
-			float spec = pow(max(dot(normalTex, halfwayDir), 0.0), 16.0);
-			vec3 specular = uLights[i].color * spec * Specular;
-			// attenuation
-			float attenuation = 1.0 / (1.0 + uLights[i].linear * distance + uLights[i].quadratic * distance * distance);
-			diffuse *= attenuation;
-			specular *= attenuation;
-			lighting += diffuse + specular;
-		}
-	}
-	
-	outFragColor = vec4(lighting, 1.0);
-	//outFragColor = pow(outFragColor, vec3(1.0f/2.2f));
-}
-)";
-#pragma endregion
-
-			program = std::make_shared<GLProgramPipeline>(vertSource, fragSource);
-		}
-		void Destroy()
-		{
-			program.reset();
-			fbo.reset();
-			color.reset();
-			width = height = 0;
-		}
-
-		void Bind()
-		{
-			constexpr auto depthClearVal = 1.0f;
-			fbo->ClearFramebuffer(GL_COLOR, 0, glm::value_ptr(glm::vec3(0.2, 0.6f, 1.0f)));
-			fbo->ClearFramebuffer(GL_DEPTH, 0, &depthClearVal);
-
-			fbo->Bind();
-			Renderer::SetViewport(0, 0, width, height);
-
-			program->Bind();
-		}
-
-		void Resize(int inWidth, int inHeight)
-		{
-			width = inWidth;
-			height = inHeight;
-
-			color.reset(new GLTexture2D(GL_RGBA8, GL_RGBA, width, height, nullptr, GL_NEAREST));
-
-			fbo.reset(new GLFramebuffer({ color }));
-		}
-
-		GLFramebufferRef fbo = nullptr;
-		GLTexture2DRef color = nullptr;
-
-		GLProgramPipelineRef program = nullptr;
-
-		int width = 0;
-		int height = 0;
+		SceneLight(const glm::vec3& _position, const glm::vec3& _color, float _radius) : position(_position), color(_color), radius(_radius) {}
+		glm::vec3 position; // world light position
+		glm::vec3 color; // light's color
+		float radius; // light's radius
 	};
 
-	LightingPassFB lightingPassFB;
+	SceneLight globalLight(glm::vec3(-2.5f, 5.0f, -1.25f), glm::vec3(1.0f, 1.0f, 1.0f), 0.125f);
+
+
+	UtilsExample::SimpleShadowMapPass simpleShadowMapFB;
+	simpleShadowMapFB.Create(UtilsExample::SHADOW_WIDTH, UtilsExample::SHADOW_HEIGHT);
+
+
+	UtilsExample::GBufferRef gbuffer{ new UtilsExample::GBuffer(Window::GetWidth(), Window::GetHeight()) };
+		
+	UtilsExample::DeferredLightingPassFB lightingPassFB;
 	lightingPassFB.Create(Window::GetWidth(), Window::GetHeight());
+
+
 
 	GLVertexArrayRef VAOEmpty{ new GLVertexArray };
 
@@ -168,6 +73,8 @@ void main()
 	//ModelRef model{ new Model("Data/Models/holodeck/holodeck.obj") };
 	//ModelRef model{ new Model("Data/Models/lost-empire/lost_empire.obj") };
 	//ModelRef model{ new Model("Data/Models/sibenik/sibenik.obj") };
+
+	ModelRef model2{ new Model("Data/Models/Dragon.obj") };
 
 #pragma region lighting info
 	const unsigned int NR_LIGHTS = 64;
@@ -254,17 +161,49 @@ void main()
 #pragma endregion
 
 #pragma region render
-		// GBuffer
+		glEnable(GL_DEPTH_TEST);
+
+		// 1. render depth of scene to texture (from light's perspective)
 		{
-			glEnable(GL_DEPTH_TEST);
+			glm::mat4 lightProjection, lightView;
+			glm::mat4 lightSpaceMatrix;
+			float zNear = 1.0f, zFar = 10.0f;
+
+			if (enableShadows) 
+			{
+				lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, zNear, zFar);
+				lightView = glm::lookAt(globalLight.position, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
+				lightSpaceMatrix = lightProjection * lightView;
+				// render scene from light's point of view
+
+				simpleShadowMapFB.Bind();
+				simpleShadowMapFB.program->SetVertexUniform(0, lightSpaceMatrix);
+
+				// DRAW MODEL
+				glm::mat4 modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 0.0f));
+				glm::mat4 modelScale = glm::scale(modelTranslate, glm::vec3(0.2f));
+
+				simpleShadowMapFB.program->SetVertexUniform(1, modelScale);
+				model2->Draw(simpleShadowMapFB.program);
+			}
+		}
+
+		// 2. geometry pass: render scene's geometry/color data into gbuffer
+		{
 			gbuffer->BindForWriting();
 			gbuffer->GetProgram()->SetVertexUniform(0, perspective);
 			gbuffer->GetProgram()->SetVertexUniform(1, camera.GetViewMatrix());
 			gbuffer->GetProgram()->SetVertexUniform(2, glm::mat4(1.0f));
 			model->Draw(gbuffer->GetProgram());
+				
+			glm::mat4 modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 0.0f));
+			glm::mat4 modelScale = glm::scale(modelTranslate, glm::vec3(0.2f));
+
+			gbuffer->GetProgram()->SetVertexUniform(2, modelScale);
+			model2->Draw(gbuffer->GetProgram());
 		}
 
-		// Lighting pass framebuffer
+		// 3. lighting pass: calculate lighting by iterating over a screen filled quad pixel-by-pixel using the gbuffer's content and shadow map
 		{
 			lightingPassFB.Bind();
 			lightingPassFB.program->SetFragmentUniform(0, camera.position);

@@ -79,6 +79,9 @@
     <Filter Include="3rdparty\imgui">
       <UniqueIdentifier>{8030fdaa-9180-4454-8d9b-2d494c2d45f0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{ee6066be-ad1b-46cd-99b5-ec9a8d0a8555}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="NanoEngine.inl" />

@@ -2,50 +2,6 @@
 #include "Example.h"
 #include "Current.h"
 
-3dev - анимация
-https ://github.com/janekb04/PBRDemoOGL
-есть биндлесс текстуры(возможен вариант для gbuffer)
-https ://github.com/swq0553/DeferredShading
-
-
-	задачи
-	продолжние deffered shading
-	возможно в GBuffer сделать Texture2dArray а не набор отдельных текстур
-	ssao
-	пространство Graphics
-	именно в нем создан класс GBuffer(и описан только в cpp)
-	можно размещать модели.
-	при этом можно размещать на стадию forward или deffered
-	в графике также камера
-
-	скетелтная анимация
-
-
-	ссылки
-
-
-
-https://github.com/hotstreams/limitless-engine/tree/master/shaders/functions
-https://www.youtube.com/@GalaxyPedlar/videos
-https://www.youtube.com/@GalaxyPedlar/videos
-https://github.com/blackears/cyclopsLevelBuilder
-https://github.com/search?q=deferred%20shading&type=repositories
-https://github.com/turanszkij/WickedEngine/tree/master/WickedEngine
-https://github.com/diharaw/reflective-shadow-maps/blob/master/src/shader/gbuffer_vs.glsl
-https://github.com/sergcpp/DummyEngine/tree/master/src
-https://github.com/Gforcex/OpenGraphic
-https://github.com/bcrusco/Forward-Plus-Renderer/blob/master/Forward-Plus/Forward-Plus/source/main.cpp
-
-
-
-сделать класс график и туда гбуфер
-в график добавляются модели
-там есть камера
-модели можно добавлять для форвард и деферед очереди
-
-
-еще занятся анимацией
-
 using namespace physx;
 
 #pragma comment( lib, "PhysX_64.lib" )

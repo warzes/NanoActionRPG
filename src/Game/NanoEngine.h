@@ -421,19 +421,6 @@ namespace Renderer
 //==============================================================================
 #pragma region Graphics
 
-#pragma endregion
-
-//==============================================================================
-// RenderWorld
-//==============================================================================
-#pragma region RenderWorld
-
-constexpr const char* UniformDiffuseColorName = "uDiffuseColor";
-constexpr const char* UniformAmbientColorName = "uAmbientColor";
-constexpr const char* UniformSpecularColorName = "uSpecularColor";
-constexpr const char* UniformShininessName = "uShininess";
-constexpr const char* UniformRefractiName = "uRefracti";
-
 struct MaterialTexture final
 {
 	GLTexture2DRef texture = nullptr;
@@ -519,8 +506,16 @@ private:
 };
 using ModelRef = std::shared_ptr<Model>;
 
+#pragma endregion
+
+//==============================================================================
+// Scene
+//==============================================================================
+#pragma region Scene
+
 class Camera final
 {
+	// TODO: правостороняя система координат работает неправильно, надо переделать под нее
 public:
 	void SetPosition(const glm::vec3& pos);
 	void SetPosition(const glm::vec3& pos, const glm::vec3& forwardLook);

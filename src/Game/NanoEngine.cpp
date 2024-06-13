@@ -748,12 +748,11 @@ void Renderer::SetScissor(GLint x, GLint y, GLsizei width, GLsizei height)
 //==============================================================================
 #pragma region Graphics
 
-#pragma endregion
-
-//==============================================================================
-// RenderWorld
-//==============================================================================
-#pragma region RenderWorld
+constexpr const char* UniformDiffuseColorName = "uDiffuseColor";
+constexpr const char* UniformAmbientColorName = "uAmbientColor";
+constexpr const char* UniformSpecularColorName = "uSpecularColor";
+constexpr const char* UniformShininessName = "uShininess";
+constexpr const char* UniformRefractiName = "uRefracti";
 
 #pragma region Mesh
 
@@ -1011,6 +1010,13 @@ void Model::computeAABB()
 }
 
 #pragma endregion
+
+#pragma endregion
+
+//==============================================================================
+// Scene
+//==============================================================================
+#pragma region Scene
 
 #pragma region Camera
 

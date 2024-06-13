@@ -2,6 +2,51 @@
 
 namespace UtilsExample
 {
+	const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
+
+	class SimpleShadowMapPass final
+	{
+	public:
+		void Create(int width, int height)
+		{
+			m_width = width;
+			m_height = height;
+
+			depth.reset(new GLTexture2D(GL_DEPTH_COMPONENT32F, GL_DEPTH, GL_FLOAT, m_width, m_height, nullptr, GL_NEAREST));
+			/*
+			GL_TEXTURE_MIN_FILTER, GL_NEAREST
+			GL_TEXTURE_MAG_FILTER, GL_NEAREST
+			GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER
+			GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER
+			float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+			GL_TEXTURE_BORDER_COLOR, borderColor)
+			// attach depth texture as FBO's depth buffer
+			*/
+
+			fbo.reset(new GLFramebuffer({}, depth));
+		}
+
+		void Bind()
+		{
+			constexpr auto depthClearVal = 1.0f;
+			fbo->ClearFramebuffer(GL_DEPTH, 0, &depthClearVal);
+			fbo->Bind();
+			Renderer::SetViewport(0, 0, m_width, m_height);
+			program->Bind();
+		}
+
+
+		GLFramebufferRef fbo = nullptr;
+		GLTexture2DRef depth = nullptr;
+
+		GLProgramPipelineRef program = nullptr;
+
+	private:
+		int m_width = 0;
+		int m_height = 0;
+	};
+
+
 	class GBuffer final
 	{
 	public:
@@ -9,7 +54,7 @@ namespace UtilsExample
 		GBuffer(int width, int height);
 		~GBuffer();
 
-		void Resize(int width, int iheight);
+		void Resize(int width, int height);
 
 		void BindForWriting();
 		void BindForReading();
@@ -76,11 +121,11 @@ layout (location = 2) uniform mat4 uWorldMatrix;
 void main()
 {	
 	vec4 worldPos = uWorldMatrix * vec4(aPosition, 1.0);
-	mat3 NormalMatrix = inverse(mat3(uWorldMatrix));
+	mat3 normalMatrix = transpose(inverse(mat3(uWorldMatrix)));
 	o.FragPosInViewSpace = worldPos.xyz;
 	o.Color = aColor;
 	o.TexCoords = aTexCoords;
-	o.Normal = NormalMatrix * aNormal;
+	o.Normal = normalMatrix * aNormal;
 	gl_Position = uProjectionMatrix * uViewMatrix * worldPos;
 
 }
@@ -174,6 +219,140 @@ void main()
 	{
 		return m_program;
 	}
+
+	class DeferredLightingPassFB
+	{
+	public:
+		void Create(int inWidth, int inHeight)
+		{
+			Resize(inWidth, inHeight);
+
+#pragma region VertexShader
+			const char* vertSource = R"(
+#version 460
+
+out gl_PerVertex { vec4 gl_Position; };
+out vec2 TexCoords;
+
+// full screen quad vertices
+const vec2 verts[] = { vec2(-1.0f, 1.0f), vec2(1.0f, 1.0f), vec2(1.0f,-1.0f), vec2(-1.0f,-1.0f) };
+const vec2 uvs[] = { vec2(0.0f, 1.0f), vec2(1.0f, 1.0f), vec2(1.0f, 0.0f), vec2(0.0f, 0.0f) };
+const uint index[] = { 0, 3, 2, 2, 1, 0 };
+
+void main()
+{
+	TexCoords = uvs[index[gl_VertexID]];
+	gl_Position = vec4(verts[index[gl_VertexID]], 0.0, 1.0);
+}
+)";
+#pragma endregion
+
+#pragma region FragmentShader
+			const char* fragSource = R"(
+#version 460
+
+in vec2 TexCoords;
+
+out vec4 outFragColor;
+
+layout (binding = 0) uniform sampler2D positionTexture;
+layout (binding = 1) uniform sampler2D normalTexture;
+layout (binding = 2) uniform sampler2D albedoTexture;
+
+struct Light {
+	vec3 position;
+	vec3 color;
+
+	float linear;
+	float quadratic;
+	float radius;
+};
+const int NR_LIGHTS = 64;
+
+layout (location = 0) uniform vec3 uCameraPos;
+layout (location = 1) uniform Light uLights[NR_LIGHTS];
+
+void main()
+{
+	// retrieve data form gbuffer
+	const vec3 fragPos = texture(positionTexture, TexCoords).rgb;
+	const vec3 normalTex = texture(normalTexture, TexCoords).rgb;
+	const vec4 diffuseTex = texture(albedoTexture, TexCoords);
+	const vec3 Diffuse = diffuseTex.rgb;
+	const float Specular = diffuseTex.a;
+
+	vec3 lighting = Diffuse * 0.1; // hard-coded ambient component
+	vec3 viewDir = normalize(uCameraPos - fragPos);
+
+	// point lights
+	for(int i = 0; i < NR_LIGHTS; ++i)
+	{
+		// calculate distance between light source and current fragment
+		float distance = length(uLights[i].position - fragPos);
+		if (distance < uLights[i].radius)
+		{
+			// diffuse
+			vec3 lightDir = normalize(uLights[i].position - fragPos);
+			vec3 diffuse = max(dot(normalTex, lightDir), 0.0) * Diffuse * uLights[i].color;
+			// specular
+			vec3 halfwayDir = normalize(lightDir + viewDir);
+			float spec = pow(max(dot(normalTex, halfwayDir), 0.0), 16.0);
+			vec3 specular = uLights[i].color * spec * Specular;
+			// attenuation
+			float attenuation = 1.0 / (1.0 + uLights[i].linear * distance + uLights[i].quadratic * distance * distance);
+			diffuse *= attenuation;
+			specular *= attenuation;
+			lighting += diffuse + specular;
+		}
+	}
+	
+	outFragColor = vec4(lighting, 1.0);
+	//outFragColor = pow(outFragColor, vec3(1.0f/2.2f));
+}
+)";
+#pragma endregion
+
+			program = std::make_shared<GLProgramPipeline>(vertSource, fragSource);
+		}
+		void Destroy()
+		{
+			program.reset();
+			fbo.reset();
+			color.reset();
+			width = height = 0;
+		}
+
+		void Bind()
+		{
+			constexpr auto depthClearVal = 1.0f;
+			fbo->ClearFramebuffer(GL_COLOR, 0, glm::value_ptr(glm::vec3(0.2, 0.6f, 1.0f)));
+			fbo->ClearFramebuffer(GL_DEPTH, 0, &depthClearVal);
+
+			fbo->Bind();
+			Renderer::SetViewport(0, 0, width, height);
+
+			program->Bind();
+		}
+
+		void Resize(int inWidth, int inHeight)
+		{
+			width = inWidth;
+			height = inHeight;
+
+			color.reset(new GLTexture2D(GL_RGBA8, GL_RGBA, width, height, nullptr, GL_NEAREST));
+
+			fbo.reset(new GLFramebuffer({ color }));
+		}
+
+		GLFramebufferRef fbo = nullptr;
+		GLTexture2DRef color = nullptr;
+
+		GLProgramPipelineRef program = nullptr;
+
+		int width = 0;
+		int height = 0;
+	};
+
 }
 
 /*
@@ -549,141 +728,7 @@ void Example003()
 
 	UtilsExample::GBufferRef gbuffer{ new UtilsExample::GBuffer(Window::GetWidth(), Window::GetHeight()) };
 	
-	class LightingPassFB
-	{
-	public:
-		void Create(int inWidth, int inHeight)
-		{
-			Resize(inWidth, inHeight);
-
-#pragma region VertexShader
-			const char* vertSource = R"(
-#version 460
-
-out gl_PerVertex { vec4 gl_Position; };
-
-out vec2 TexCoord;
-
-// full screen quad vertices
-const vec2 verts[] = { vec2(-1.0f, 1.0f), vec2(1.0f, 1.0f), vec2(1.0f,-1.0f), vec2(-1.0f,-1.0f) };
-const vec2 uvs[] = { vec2(0.0f, 1.0f), vec2(1.0f, 1.0f), vec2(1.0f, 0.0f), vec2(0.0f, 0.0f) };
-const uint index[] = { 0, 3, 2, 2, 1, 0 };
-
-void main()
-{
-	TexCoord = uvs[index[gl_VertexID]];
-	gl_Position = vec4(verts[index[gl_VertexID]], 0.0, 1.0);
-}
-)";
-#pragma endregion
-
-#pragma region FragmentShader
-			const char* fragSource = R"(
-#version 460
-
-out vec4 outFragColor;
-
-in vec2 TexCoords;
-
-layout (binding = 0) uniform sampler2D positionTexture;
-layout (binding = 1) uniform sampler2D normalTexture;
-layout (binding = 2) uniform sampler2D albedoTexture;
-
-struct Light {
-	vec3 position;
-	vec3 color;
-
-	float linear;
-	float quadratic;
-	float radius;
-};
-const int NR_LIGHTS = 64;
-
-layout (location = 0) uniform vec3 uCameraPos;
-layout (location = 1) uniform Light uLights[NR_LIGHTS];
-
-void main()
-{
-	// retrieve data form gbuffer
-	const vec3 fragPos = texture(positionTexture, TexCoords).rgb;
-	const vec3 normalTex = texture(normalTexture, TexCoords).rgb;
-	const vec4 diffuseTex = texture(albedoTexture, TexCoords);
-	const vec3 Diffuse = diffuseTex.rgb;
-	const float Specular = diffuseTex.a;
-
-	vec3 lighting = Diffuse * 0.1; // hard-coded ambient component
-	vec3 viewDir = normalize(uCameraPos - fragPos);
-
-	// point lights
-	for(int i = 0; i < NR_LIGHTS; ++i)
-	{
-		// calculate distance between light source and current fragment
-		float distance = length(uLights[i].position - fragPos);
-		if (distance < uLights[i].radius)
-		{
-			// diffuse
-			vec3 lightDir = normalize(uLights[i].position - fragPos);
-			vec3 diffuse = max(dot(normalTex, lightDir), 0.0) * Diffuse * uLights[i].color;
-			// specular
-			vec3 halfwayDir = normalize(lightDir + viewDir);
-			float spec = pow(max(dot(normalTex, halfwayDir), 0.0), 16.0);
-			vec3 specular = uLights[i].color * spec * Specular;
-			// attenuation
-			float attenuation = 1.0 / (1.0 + uLights[i].linear * distance + uLights[i].quadratic * distance * distance);
-			diffuse *= attenuation;
-			specular *= attenuation;
-			lighting += diffuse + specular;
-		}
-	}
-	
-	outFragColor = vec4(lighting, 1.0);
-	//outFragColor = pow(outFragColor, vec3(1.0f/2.2f));
-}
-)";
-#pragma endregion
-
-			program = std::make_shared<GLProgramPipeline>(vertSource, fragSource);
-		}
-		void Destroy()
-		{
-			program.reset();
-			fbo.reset();
-			color.reset();
-			width = height = 0;
-		}
-
-		void Bind()
-		{
-			constexpr auto depthClearVal = 1.0f;
-			fbo->ClearFramebuffer(GL_COLOR, 0, glm::value_ptr(glm::vec3(0.2, 0.6f, 1.0f)));
-			fbo->ClearFramebuffer(GL_DEPTH, 0, &depthClearVal);
-
-			fbo->Bind();
-			Renderer::SetViewport(0, 0, width, height);
-
-			program->Bind();
-		}
-
-		void Resize(int inWidth, int inHeight)
-		{
-			width = inWidth;
-			height = inHeight;
-
-			color.reset(new GLTexture2D(GL_RGBA8, GL_RGBA, width, height, nullptr, GL_NEAREST));
-
-			fbo.reset(new GLFramebuffer({ color }));
-		}
-
-		GLFramebufferRef fbo = nullptr;
-		GLTexture2DRef color = nullptr;
-
-		GLProgramPipelineRef program = nullptr;
-
-		int width = 0;
-		int height = 0;
-	};
-
-	LightingPassFB lightingPassFB;
+	UtilsExample::DeferredLightingPassFB lightingPassFB;
 	lightingPassFB.Create(Window::GetWidth(), Window::GetHeight());
 
 	GLVertexArrayRef VAOEmpty{ new GLVertexArray };

@@ -230,7 +230,7 @@ inline void GLTextureCube::createTexture(GLenum internalFormat, GLenum format, G
 //==============================================================================
 // RenderWorld
 //==============================================================================
-#pragma region RenderWorld
+#pragma region Graphics
 
 inline constexpr std::vector<AttribFormat> GetMeshVertexFormat()
 {
