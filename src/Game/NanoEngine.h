@@ -421,36 +421,6 @@ namespace Renderer
 //==============================================================================
 #pragma region Graphics
 
-class GBuffer final
-{
-public:
-	GBuffer() = delete;
-	GBuffer(int width, int height);
-	~GBuffer();
-
-	void Resize(int width, int iheight);
-
-	void BindForWriting();
-	void BindForReading();
-
-	GLProgramPipelineRef GetProgram();
-
-private:
-	GLFramebufferRef m_fbo = nullptr;
-
-	GLTexture2DRef m_position = nullptr;
-	GLTexture2DRef m_normal = nullptr;
-	GLTexture2DRef m_albedo = nullptr;
-	GLTexture2DRef m_depth = nullptr;
-
-	GLProgramPipelineRef m_program = nullptr;
-
-	int m_width = 0;
-	int m_height = 0;
-
-};
-using GBufferRef = std::shared_ptr<GBuffer>;
-
 #pragma endregion
 
 //==============================================================================
