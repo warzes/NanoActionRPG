@@ -1,7 +1,4 @@
-#pragma once
-
-https://github.com/timurson/DeferredShading
-https://github.com/swq0553/DeferredShading
+﻿#pragma once
 
 void Example00X()
 {
@@ -151,11 +148,10 @@ void Example00X()
 		}
 
 #pragma region imgui
-
 		IMGUI::Update();
 		{
-			ImGui::Begin((const char*)u8"����");
-			ImGui::Text((const char*)u8"Test/����/%s", u8"���� 2");
+			ImGui::Begin((const char*)u8"Тест");
+			ImGui::Text((const char*)u8"Test/Тест/%s", u8"тест 2");
 			ImGui::End();
 		}
 #pragma endregion
@@ -180,11 +176,18 @@ void Example00X()
 				simpleShadowMapFB.program->SetVertexUniform(0, lightSpaceMatrix);
 
 				// DRAW MODEL
-				glm::mat4 modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 0.0f));
-				glm::mat4 modelScale = glm::scale(modelTranslate, glm::vec3(0.2f));
-
-				simpleShadowMapFB.program->SetVertexUniform(1, modelScale);
-				model2->Draw(simpleShadowMapFB.program);
+				{
+					gbuffer->GetProgram()->SetVertexUniform(2, glm::mat4(1.0f));
+					model->Draw(gbuffer->GetProgram());
+					glm::mat4 modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 0.0f));
+					glm::mat4 modelScale = glm::scale(modelTranslate, glm::vec3(0.2f));
+					simpleShadowMapFB.program->SetVertexUniform(1, modelScale);
+					model2->Draw(simpleShadowMapFB.program);
+				}
+			}
+			else
+			{
+				// возможно тут очищать текстуру фреймбуфера
 			}
 		}
 
@@ -194,12 +197,16 @@ void Example00X()
 			gbuffer->GetProgram()->SetVertexUniform(0, perspective);
 			gbuffer->GetProgram()->SetVertexUniform(1, camera.GetViewMatrix());
 			gbuffer->GetProgram()->SetVertexUniform(2, glm::mat4(1.0f));
+			glm::vec4 sponzaSpecular = glm::vec4(0.5f, 0.5f, 0.5f, 0.8f);
+			здесь
+			gbuffer->GetProgram()->SetVertexUniform(3, sponzaSpecular); // uSpecularCol
 			model->Draw(gbuffer->GetProgram());
 				
 			glm::mat4 modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 0.0f));
 			glm::mat4 modelScale = glm::scale(modelTranslate, glm::vec3(0.2f));
-
 			gbuffer->GetProgram()->SetVertexUniform(2, modelScale);
+			glm::vec4 modelSpecular = glm::vec4(1.0f, 1.0f, 1.0f, 0.8f);
+			gbuffer->GetProgram()->SetVertexUniform(3, sponzaSpecular); // uSpecularCol
 			model2->Draw(gbuffer->GetProgram());
 		}
 

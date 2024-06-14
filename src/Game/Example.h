@@ -24,6 +24,41 @@ namespace UtilsExample
 			*/
 
 			fbo.reset(new GLFramebuffer({}, depth));
+
+
+#pragma region VertexShader
+			const char* vertSource = R"(
+#version 460 core
+
+// -----------  Per vertex  -----------
+layout (location = 0) in vec3 aPosition;
+
+// --------- Output Variables ---------
+out gl_PerVertex { vec4 gl_Position; };
+
+// ------------- Uniform --------------
+layout (location = 0) uniform mat4 uLightSpaceMatrix;
+layout (location = 1) uniform mat4 uWorldMatrix;
+
+void main()
+{	
+	gl_Position = uLightSpaceMatrix * uWorldMatrix * vec4(aPosition, 1.0);
+}
+)";
+#pragma endregion
+
+#pragma region FragmentShader
+			const char* fragSource = R"(
+#version 460 core
+
+void main()
+{
+	//gl_FragDepth = gl_FragCoord.z;
+}
+)";
+#pragma endregion
+
+			program = std::make_shared<GLProgramPipeline>(vertSource, fragSource);
 		}
 
 		void Bind()
@@ -67,6 +102,7 @@ namespace UtilsExample
 		GLTexture2DRef m_position = nullptr;
 		GLTexture2DRef m_normal = nullptr;
 		GLTexture2DRef m_albedo = nullptr;
+		GLTexture2DRef m_specular = nullptr;
 		GLTexture2DRef m_depth = nullptr;
 
 		GLProgramPipelineRef m_program = nullptr;
@@ -147,7 +183,8 @@ in inBlock
 
 layout (location = 0) out vec3 outPosition;
 layout (location = 1) out vec3 outNormal;
-layout (location = 2) out vec4 outAlbedoSpec;
+layout (location = 2) out vec4 outAlbedo;
+layout (location = 3) out vec4 outSpecular;
 
 layout(binding = 0) uniform sampler2D DiffuseTexture;
 layout(binding = 2) uniform sampler2D SpecularTexture;
@@ -159,8 +196,8 @@ void main()
 
 	outPosition = i.FragPosInViewSpace;
 	outNormal = normalize(i.Normal);
-	outAlbedoSpec.rgb = diffuseTex.rgb * i.Color;
-	outAlbedoSpec.a = texture(SpecularTexture, i.TexCoord).r;
+	outAlbedo.rgb = diffuseTex.rgb * i.Color;
+	outAlbedo.a = texture(SpecularTexture, i.TexCoord).r;
 
 }
 )";
@@ -176,6 +213,7 @@ void main()
 		m_position.reset();
 		m_normal.reset();
 		m_albedo.reset();
+		m_specular.reset();
 		m_depth.reset();
 	}
 
@@ -184,12 +222,13 @@ void main()
 		m_width = width;
 		m_height = height;
 
-		m_position.reset(new GLTexture2D(GL_RGBA32F, GL_RGBA, GL_FLOAT, width, height, nullptr, GL_NEAREST));
-		m_normal.reset(new GLTexture2D(GL_RGBA32F, GL_RGBA, GL_FLOAT, width, height, nullptr, GL_NEAREST));
+		m_position.reset(new GLTexture2D(GL_RGB32F, GL_RGB, GL_FLOAT, width, height, nullptr, GL_NEAREST));
+		m_normal.reset(new GLTexture2D(GL_RGB32F, GL_RGB, GL_FLOAT, width, height, nullptr, GL_NEAREST));
 		m_albedo.reset(new GLTexture2D(GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, width, height, nullptr, GL_NEAREST));
+		m_specular.reset(new GLTexture2D(GL_RGBA32F, GL_RGBA, GL_FLOAT, width, height, nullptr, GL_NEAREST));
 		m_depth.reset(new GLTexture2D(GL_DEPTH_COMPONENT32F, GL_DEPTH, GL_FLOAT, width, height, nullptr, GL_NEAREST));
 
-		m_fbo.reset(new GLFramebuffer({ m_position, m_normal, m_albedo }, m_depth));
+		m_fbo.reset(new GLFramebuffer({ m_position, m_normal, m_albedo, m_specular }, m_depth));
 	}
 
 	void GBuffer::BindForWriting()
@@ -199,6 +238,7 @@ void main()
 		m_fbo->ClearFramebuffer(GL_COLOR, 0, glm::value_ptr(glm::vec4(0.0f)));
 		m_fbo->ClearFramebuffer(GL_COLOR, 1, glm::value_ptr(glm::vec4(0.0f)));
 		m_fbo->ClearFramebuffer(GL_COLOR, 2, glm::value_ptr(glm::vec4(0.0f)));
+		m_fbo->ClearFramebuffer(GL_COLOR, 3, glm::value_ptr(glm::vec4(0.0f)));
 
 		m_fbo->ClearFramebuffer(GL_DEPTH, 0, &depthClearVal);
 
@@ -213,6 +253,7 @@ void main()
 		m_position->Bind(0);
 		m_normal->Bind(1);
 		m_albedo->Bind(2);
+		m_specular->Bind(3);
 	}
 
 	GLProgramPipelineRef GBuffer::GetProgram()
