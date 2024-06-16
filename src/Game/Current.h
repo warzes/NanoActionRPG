@@ -58,7 +58,7 @@ void Example00X()
 
 	UtilsExample::GBufferRef gbuffer{ new UtilsExample::GBuffer(Window::GetWidth(), Window::GetHeight()) };
 		
-	UtilsExample::DeferredLightingPassFB lightingPassFB;
+	UtilsExample::CoreLightingPassFB lightingPassFB;
 	lightingPassFB.Create(Window::GetWidth(), Window::GetHeight());
 
 
@@ -160,34 +160,29 @@ void Example00X()
 		glEnable(GL_DEPTH_TEST);
 
 		// 1. render depth of scene to texture (from light's perspective)
+		glm::mat4 lightProjection, lightView;
+		glm::mat4 lightSpaceMatrix;
 		{
-			glm::mat4 lightProjection, lightView;
-			glm::mat4 lightSpaceMatrix;
-			float zNear = 1.0f, zFar = 10.0f;
+			simpleShadowMapFB.Bind();
 
 			if (enableShadows) 
 			{
-				lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, zNear, zFar);
+				lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 10.0f);
 				lightView = glm::lookAt(globalLight.position, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
 				lightSpaceMatrix = lightProjection * lightView;
 				// render scene from light's point of view
-
-				simpleShadowMapFB.Bind();
+					
 				simpleShadowMapFB.program->SetVertexUniform(0, lightSpaceMatrix);
 
 				// DRAW MODEL
 				{
-					gbuffer->GetProgram()->SetVertexUniform(2, glm::mat4(1.0f));
-					model->Draw(gbuffer->GetProgram());
+					simpleShadowMapFB.program->SetVertexUniform(1, glm::mat4(1.0f));
+					model->Draw(simpleShadowMapFB.program);
 					glm::mat4 modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 0.0f));
 					glm::mat4 modelScale = glm::scale(modelTranslate, glm::vec3(0.2f));
 					simpleShadowMapFB.program->SetVertexUniform(1, modelScale);
 					model2->Draw(simpleShadowMapFB.program);
 				}
-			}
-			else
-			{
-				// возможно тут очищать текстуру фреймбуфера
 			}
 		}
 
@@ -198,40 +193,33 @@ void Example00X()
 			gbuffer->GetProgram()->SetVertexUniform(1, camera.GetViewMatrix());
 			gbuffer->GetProgram()->SetVertexUniform(2, glm::mat4(1.0f));
 			glm::vec4 sponzaSpecular = glm::vec4(0.5f, 0.5f, 0.5f, 0.8f);
-			здесь
-			gbuffer->GetProgram()->SetVertexUniform(3, sponzaSpecular); // uSpecularCol
+			gbuffer->GetProgram()->SetFragmentUniform(0, sponzaSpecular);
 			model->Draw(gbuffer->GetProgram());
 				
 			glm::mat4 modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 0.0f));
 			glm::mat4 modelScale = glm::scale(modelTranslate, glm::vec3(0.2f));
 			gbuffer->GetProgram()->SetVertexUniform(2, modelScale);
 			glm::vec4 modelSpecular = glm::vec4(1.0f, 1.0f, 1.0f, 0.8f);
-			gbuffer->GetProgram()->SetVertexUniform(3, sponzaSpecular); // uSpecularCol
+			gbuffer->GetProgram()->SetFragmentUniform(0, modelSpecular);
 			model2->Draw(gbuffer->GetProgram());
 		}
 
 		// 3. lighting pass: calculate lighting by iterating over a screen filled quad pixel-by-pixel using the gbuffer's content and shadow map
+		//if (gBufferMode == 0) // если цифра, то дебажный режим для вывода выбранной текстуры из gbuffer
 		{
 			lightingPassFB.Bind();
-			lightingPassFB.program->SetFragmentUniform(0, camera.position);
-			// send light relevant uniforms
-			for (unsigned int i = 0; i < lightPositions.size(); i++)
-			{
-				lightingPassFB.program->SetFragmentUniform(lightingPassFB.program->GetFragmentUniform("uLights[" + std::to_string(i) + "].position"), lightPositions[i]);
-				lightingPassFB.program->SetFragmentUniform(lightingPassFB.program->GetFragmentUniform("uLights[" + std::to_string(i) + "].color"), lightColors[i]);
-				// update attenuation parameters and calculate radius
-				const float constant = 1.0f; // note that we don't send this to the shader, we assume it is always 1.0 (in our case)
-				const float linear = 0.7f;
-				const float quadratic = 1.8f;
-				lightingPassFB.program->SetFragmentUniform(lightingPassFB.program->GetFragmentUniform("uLights[" + std::to_string(i) + "].linear"), linear);
-				lightingPassFB.program->SetFragmentUniform(lightingPassFB.program->GetFragmentUniform("uLights[" + std::to_string(i) + "].quadratic"), quadratic);
-				// then calculate radius of light volume/sphere
-				const float maxBrightness = std::fmaxf(std::fmaxf(lightColors[i].x, lightColors[i].y), lightColors[i].z);
-				float radius = (-linear + std::sqrt(linear * linear - 4 * quadratic * (constant - (256.0f / 5.0f) * maxBrightness))) / (2.0f * quadratic);
-				lightingPassFB.program->SetFragmentUniform(lightingPassFB.program->GetFragmentUniform("uLights[" + std::to_string(i) + "].radius"), radius);
-			}
+
+			lightingPassFB.program->SetFragmentUniform(0, lightSpaceMatrix);
+			lightingPassFB.program->SetFragmentUniform(1, glossiness);
+			lightingPassFB.program->SetFragmentUniform(2, camera.position);
+
+			lightingPassFB.program->SetFragmentUniform(lightingPassFB.program->GetFragmentUniform("uLight.position"), globalLight.position);
+			lightingPassFB.program->SetFragmentUniform(lightingPassFB.program->GetFragmentUniform("uLight.color"), globalLight.color);
+			lightingPassFB.program->SetFragmentUniform(lightingPassFB.program->GetFragmentUniform("uLight.linear"), gLinearAttenuation);
+			lightingPassFB.program->SetFragmentUniform(lightingPassFB.program->GetFragmentUniform("uLight.quadratic"), gQuadraticAttenuation);
 
 			gbuffer->BindForReading();
+			simpleShadowMapFB.depth->Bind(4);
 			VAOEmpty->Bind();
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 		}

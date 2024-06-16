@@ -189,6 +189,9 @@ layout (location = 3) out vec4 outSpecular;
 layout(binding = 0) uniform sampler2D DiffuseTexture;
 layout(binding = 2) uniform sampler2D SpecularTexture;
 
+layout (location = 0) uniform vec4 specularCol;
+
+
 void main()
 {
 	vec4 diffuseTex = texture(DiffuseTexture, i.TexCoord);
@@ -197,7 +200,9 @@ void main()
 	outPosition = i.FragPosInViewSpace;
 	outNormal = normalize(i.Normal);
 	outAlbedo.rgb = diffuseTex.rgb * i.Color;
-	outAlbedo.a = texture(SpecularTexture, i.TexCoord).r;
+	outAlbedo.a = diffuseTex.a;
+
+	outSpecular = specularCol;// texture(SpecularTexture, i.TexCoord).r;
 
 }
 )";
@@ -235,8 +240,8 @@ void main()
 	{
 		constexpr auto depthClearVal = 1.0f;
 
-		m_fbo->ClearFramebuffer(GL_COLOR, 0, glm::value_ptr(glm::vec4(0.0f)));
-		m_fbo->ClearFramebuffer(GL_COLOR, 1, glm::value_ptr(glm::vec4(0.0f)));
+		m_fbo->ClearFramebuffer(GL_COLOR, 0, glm::value_ptr(glm::vec3(0.0f)));
+		m_fbo->ClearFramebuffer(GL_COLOR, 1, glm::value_ptr(glm::vec3(0.0f)));
 		m_fbo->ClearFramebuffer(GL_COLOR, 2, glm::value_ptr(glm::vec4(0.0f)));
 		m_fbo->ClearFramebuffer(GL_COLOR, 3, glm::value_ptr(glm::vec4(0.0f)));
 
@@ -260,6 +265,188 @@ void main()
 	{
 		return m_program;
 	}
+
+	class CoreLightingPassFB
+	{
+	public:
+		void Create(int inWidth, int inHeight)
+		{
+			Resize(inWidth, inHeight);
+
+#pragma region VertexShader
+			const char* vertSource = R"(
+#version 460
+
+out gl_PerVertex { vec4 gl_Position; };
+out vec2 TexCoords;
+
+// full screen quad vertices
+const vec2 verts[] = { vec2(-1.0f, 1.0f), vec2(1.0f, 1.0f), vec2(1.0f,-1.0f), vec2(-1.0f,-1.0f) };
+const vec2 uvs[] = { vec2(0.0f, 1.0f), vec2(1.0f, 1.0f), vec2(1.0f, 0.0f), vec2(0.0f, 0.0f) };
+const uint index[] = { 0, 3, 2, 2, 1, 0 };
+
+void main()
+{
+	TexCoords = uvs[index[gl_VertexID]];
+	gl_Position = vec4(verts[index[gl_VertexID]], 0.0, 1.0);
+}
+)";
+#pragma endregion
+
+#pragma region FragmentShader
+			const char* fragSource = R"(
+#version 460
+
+struct Light {
+	vec3 position;
+	vec3 color;
+
+	float linear;
+	float quadratic;
+	float radius;
+};
+
+const int nsamples = 8;
+
+in vec2 TexCoords;
+
+out vec4 outFragColor;
+
+layout (binding = 0) uniform sampler2D positionTexture;
+layout (binding = 1) uniform sampler2D normalTexture;
+layout (binding = 2) uniform sampler2D albedoTexture;
+layout (binding = 3) uniform sampler2D specularTexture;
+layout (binding = 4) uniform sampler2D shadowMapTexture;
+
+layout (location = 0) uniform mat4 uLightSpaceMatrix;
+layout (location = 1) uniform float uGlossiness;
+layout (location = 2) uniform vec3 uCameraPos;
+
+layout (location = 3) uniform vec4 offset[nsamples] = { 
+							vec4(0.000000, 0.000000, 0.0, 0.0),
+							vec4(0.079821, 0.165750, 0.0, 0.0),
+							vec4(-0.331500, 0.159642, 0.0, 0.0),
+							vec4(-0.239463, -0.497250, 0.0, 0.0),
+							vec4(0.662999, -0.319284, 0.0, 0.0),
+							vec4(0.399104, 0.828749, 0.0, 0.0),
+							vec4(-0.994499, 0.478925, 0.0, 0.0),
+							vec4(-0.558746, -1.160249, 0.0, 0.0) };
+
+uniform Light uLight;
+
+
+float getOcclusionCoef(vec4 shadowCoord, float bias)
+{
+	// get the stored depth
+	float shadow_d = texture(shadowMapTexture, shadowCoord.xy).r;
+	float diff = shadow_d - (shadowCoord.z + bias);
+	return shadowCoord.z - bias > shadow_d  ? 0.0 : 1.0;
+}
+
+// using percent closer filtering technique
+float percentCloserFilteredShadow (vec3 fragPos, vec3 normal)
+{
+	vec4 fragPosLightSpace = uLightSpaceMatrix * vec4(fragPos, 1.0);
+	// perform perspective divide
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+	// transform to [0,1] range
+    projCoords = projCoords * 0.5 + 0.5;
+	// calculate bias
+	vec3 lightDir = normalize(uLight.position - fragPos);
+	float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
+	float scale = 1.0 / textureSize(shadowMapTexture, 0).x;
+	// sum shadow samples
+	float shadowCoef = 0.0;
+	for(int i=0; i<nsamples; i++)
+	{
+		shadowCoef += getOcclusionCoef(vec4(projCoords, 0.0) + scale*offset[i], bias);
+	}
+	shadowCoef /= nsamples;
+	
+	// keep the shadow at 1.0 when outside the zFar region of the light's frustum.
+    if(projCoords.z > 1.0)
+        shadowCoef = 1.0;
+	
+	return shadowCoef;
+}
+
+void main()
+{
+	// retrieve data form gbuffer
+	const vec3 FragPos = texture(positionTexture, TexCoords).rgb;
+	const vec3 Normal = texture(normalTexture, TexCoords).rgb;
+	const vec3 Diffuse = texture(albedoTexture, TexCoords).rgb;
+	const vec4 Specular = texture(specularTexture, TexCoords);
+
+	// do Phong lighting calculation
+	vec3 ambient  = Diffuse * 0.2; // hard-coded ambient component
+	vec3 viewDir  = normalize(uCameraPos - FragPos);
+
+	// diffuse
+	vec3 lightDir = normalize(uLight.position - FragPos);
+	vec3 diffuse = max(dot(Normal, lightDir), 0.0) * Diffuse * uLight.color;
+	// specular
+	vec3 halfwayDir = normalize(lightDir + viewDir);  
+	float spec = pow(max(dot(Normal, halfwayDir), 0.0), uGlossiness) * Specular.a;
+	vec3 specular = uLight.color * spec * Specular.rgb;
+	// attenuation
+	float distance = length(uLight.position - FragPos);
+	float attenuation = 1.0 / (1.0 + uLight.linear * distance + uLight.quadratic * distance * distance);
+	diffuse *= attenuation;
+	specular *= attenuation;
+	// calculate shadow using PCF
+	float shadow = percentCloserFilteredShadow(FragPos, Normal);
+	
+	vec3 result = ambient + (diffuse + specular) * shadow;
+			
+	outFragColor = vec4(result, 1.0);
+	//outFragColor = pow(outFragColor, vec3(1.0f/2.2f));
+}
+)";
+#pragma endregion
+
+			program = std::make_shared<GLProgramPipeline>(vertSource, fragSource);
+		}
+		void Destroy()
+		{
+			program.reset();
+			fbo.reset();
+			color.reset();
+			width = height = 0;
+		}
+
+		void Bind()
+		{
+			constexpr auto depthClearVal = 1.0f;
+			fbo->ClearFramebuffer(GL_COLOR, 0, glm::value_ptr(glm::vec3(0.2, 0.6f, 1.0f)));
+			fbo->ClearFramebuffer(GL_DEPTH, 0, &depthClearVal);
+
+			fbo->Bind();
+			Renderer::SetViewport(0, 0, width, height);
+
+			program->Bind();
+		}
+
+		void Resize(int inWidth, int inHeight)
+		{
+			width = inWidth;
+			height = inHeight;
+
+			color.reset(new GLTexture2D(GL_RGBA8, GL_RGBA, width, height, nullptr, GL_NEAREST));
+
+			fbo.reset(new GLFramebuffer({ color }));
+		}
+
+		GLFramebufferRef fbo = nullptr;
+		GLTexture2DRef color = nullptr;
+
+		GLProgramPipelineRef program = nullptr;
+
+		int width = 0;
+		int height = 0;
+	};
+
+
 
 	class DeferredLightingPassFB
 	{
