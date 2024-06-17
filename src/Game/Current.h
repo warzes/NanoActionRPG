@@ -316,6 +316,9 @@ void Example00X()
 
 		// 2. geometry pass: render scene's geometry/color data into gbuffer
 		{
+			glDisable(GL_BLEND);
+			glEnable(GL_DEPTH_TEST);
+
 			gbuffer->BindForWriting();
 			gbuffer->GetProgram()->SetVertexUniform(0, perspective);
 			gbuffer->GetProgram()->SetVertexUniform(1, camera.GetViewMatrix());

@@ -120,24 +120,21 @@ layout (location = 3) in vec2 aTexCoords;
 layout (location = 4) in vec3 aTangent;
 // ----------- Per instance -----------
 //layout (location = 5) in mat4 aModel; // TODO:
-//      location = 6
-//      location = 7
 //layout (location = 8) in int aMaterialIdx;
 //layout (location = 9) in mat3 aNormalMat;
-//      location = 10
-//      location = 11
 
 // --------- Output Variables ---------
 
 out gl_PerVertex { vec4 gl_Position; };
 
-out outBlock
+out DeferredData
 {
-	vec3 FragPosInViewSpace; // POSITION
-	vec3 Color;
-	vec3 Normal;
-	vec2 TexCoords;
-} o;
+	vec3 position;
+	vec3 color;
+	vec3 normal;
+	vec2 texCoords;
+	vec3 tangent;
+} outData;
 
 // ------------- Uniform --------------
 layout (location = 0) uniform mat4 uProjectionMatrix;
@@ -146,14 +143,17 @@ layout (location = 2) uniform mat4 uWorldMatrix;
 
 void main()
 {	
-	vec4 worldPos = uWorldMatrix * vec4(aPosition, 1.0);
-	mat3 normalMatrix = transpose(inverse(mat3(uWorldMatrix)));
-	o.FragPosInViewSpace = worldPos.xyz;
-	o.Color = aColor;
-	o.TexCoords = aTexCoords;
-	o.Normal = normalMatrix * aNormal;
-	gl_Position = uProjectionMatrix * uViewMatrix * worldPos;
+	vec4 worldPosition = uWorldMatrix * vec4(aPosition, 1.0);
+	mat3 worldNormal = transpose(inverse(mat3(uWorldMatrix))); //vec4 worldNormal = uWorldMatrix * vec4(aNormal, 0.0);
+	vec4 worldTangent = uWorldMatrix * vec4(aTangent, 0.0);
 
+	outData.position = worldPosition.xyz;
+	outData.color = aColor;
+	outData.normal = worldNormal * aNormal; //outData.normal = worldNormal.xyz;
+	outData.texCoords = aTexCoords;
+	outData.tangent = worldTangent.xyz;
+
+	gl_Position = uProjectionMatrix * uViewMatrix * worldPosition;
 }
 )";
 #pragma endregion
@@ -163,37 +163,43 @@ void main()
 #version 460 core
 #extension GL_ARB_bindless_texture : require
 
-in inBlock
+in DeferredData
 {
-	vec3 FragPosInViewSpace;
-	vec3 Color;
-	vec3 Normal;
-	vec2 TexCoord;
-} i;
+	vec3 position;
+	vec3 color;
+	vec3 normal;
+	vec2 texCoords;
+	vec3 tangent;
+} inData;
 
 layout (location = 0) out vec3 outPosition;
 layout (location = 1) out vec3 outNormal;
-layout (location = 2) out vec4 outAlbedo;
+layout (location = 2) out vec4 outDiffuse;
 layout (location = 3) out vec4 outSpecular;
 
 layout(binding = 0) uniform sampler2D DiffuseTexture;
 layout(binding = 2) uniform sampler2D SpecularTexture;
 
-layout (location = 0) uniform vec4 specularCol;
+layout (location = 0) uniform vec4 uSpecularCol;
 
+layout (location = 1) uniform bool uHasNormalMap;
 
 void main()
 {
-	vec4 diffuseTex = texture(DiffuseTexture, i.TexCoord);
+	vec4 diffuseTex = texture(DiffuseTexture, inData.texCoords);
 	if (diffuseTex.a < 0.02) discard;
 
-	outPosition = i.FragPosInViewSpace;
-	outNormal = normalize(i.Normal);
-	outAlbedo.rgb = diffuseTex.rgb * i.Color;
-	outAlbedo.a = diffuseTex.a;
+	vec3 normal = normalize(inData.normal);
+	//if(uHasNormalMap)
+	//{
+		// TODO:
+	//}
 
-	outSpecular = specularCol;// texture(SpecularTexture, i.TexCoord).r;
-
+	outPosition = inData.position;
+	outNormal = normal;
+	outDiffuse.rgb = diffuseTex.rgb * inData.color;
+	outDiffuse.a = diffuseTex.a;
+	outSpecular = uSpecularCol;// texture(SpecularTexture, inData.texCoords).r;
 }
 )";
 #pragma endregion
