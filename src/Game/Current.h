@@ -96,11 +96,6 @@ void Example00X()
 	glm::mat4 perspective = glm::perspective(glm::radians(60.0f), (float)Window::GetWidth() / (float)Window::GetHeight(), 0.1f, 1000.f);
 	glViewport(0, 0, Window::GetWidth(), Window::GetHeight());
 
-	//glEnable(GL_BLEND);
-	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	//glDepthMask(GL_TRUE);
-
-
 	glm::ivec2 lastMousePosition = Mouse::GetPosition();
 
 	Camera camera;
@@ -142,9 +137,7 @@ void Example00X()
 		float radius; // light's radius
 	};
 
-	//SceneLight globalLight(glm::vec3(-2.5f, 5.0f, -1.25f), glm::vec3(1.0f, 1.0f, 1.0f), 0.125f);
-	//SceneLight globalLight(glm::vec3(0.5f, -0.3f, 0.0f), glm::vec3(1.0f, 1.0f, 0.0f), 0.125f);
-	SceneLight globalLight(glm::vec3(-2.5f, 5.0f, -1.25f), glm::vec3(1.0f, 1.0f, 0.0f), 0.125f);
+	SceneLight globalLight(glm::vec3(-2.5f, 5.0f, -1.25f), glm::vec3(1.0f, 1.0f, 1.0f), 0.125f);
 
 	UtilsExample::SimpleShadowMapPass simpleShadowMapFB;
 	simpleShadowMapFB.Create(UtilsExample::SHADOW_WIDTH, UtilsExample::SHADOW_HEIGHT);
@@ -373,6 +366,11 @@ void Example00X()
 			glBlendFunc(GL_ONE, GL_ONE);
 
 			pointsLightingPassFB.Bind();
+			Renderer::BlitFrameBuffer(lightingPassFB.fbo, pointsLightingPassFB.fbo,
+				0, 0, Window::GetWidth(), Window::GetHeight(),
+				0, 0, Window::GetWidth(), Window::GetHeight(),
+				GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
 			pointsLightingPassFB.program->SetVertexUniform(0, perspective);
 			pointsLightingPassFB.program->SetVertexUniform(1, camera.GetViewMatrix());
 			pointsLightingPassFB.program->SetFragmentUniform(0, camera.position);
@@ -386,22 +384,17 @@ void Example00X()
 			sphereVao->Bind();
 			glDrawElementsInstanced(GL_TRIANGLES, 2280, GL_UNSIGNED_INT, 0, totalLights);
 
-
 			glDisable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			glFrontFace(GL_CCW);
 			glDisable(GL_BLEND);
-			(GL_CULL_FACE);
+			glDisable(GL_CULL_FACE);
 		}
 
 		// Main frame
 		{
 			glDisable(GL_DEPTH_TEST);
 			Renderer::MainFrameBuffer();
-			/*Renderer::BlitFrameBuffer(lightingPassFB.fbo, nullptr,
-				0, 0, Window::GetWidth(), Window::GetHeight(),
-				0, 0, Window::GetWidth(), Window::GetHeight(),
-				GL_COLOR_BUFFER_BIT, GL_NEAREST);*/
 			Renderer::BlitFrameBuffer(pointsLightingPassFB.fbo, nullptr,
 				0, 0, Window::GetWidth(), Window::GetHeight(),
 				0, 0, Window::GetWidth(), Window::GetHeight(),

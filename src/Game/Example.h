@@ -408,7 +408,7 @@ void main()
 		void Bind()
 		{
 			constexpr auto depthClearVal = 1.0f;
-			fbo->ClearFramebuffer(GL_COLOR, 0, glm::value_ptr(glm::vec3(0.2, 0.6f, 1.0f)));
+			fbo->ClearFramebuffer(GL_COLOR, 0, glm::value_ptr(glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)));
 			fbo->ClearFramebuffer(GL_DEPTH, 0, &depthClearVal);
 
 			fbo->Bind();
@@ -563,8 +563,6 @@ void main()
 		int width = 0;
 		int height = 0;
 	};
-
-
 
 	class OldDeferredLightingPassFB
 	{
