@@ -1,11 +1,54 @@
 ﻿#pragma once
 
-const float INITIAL_POINT_LIGHT_RADIUS = 0.663f;
+const float INITIAL_POINT_LIGHT_RADIUS = 1.663f;
 const unsigned int LIGHT_GRID_WIDTH = 10;  // point light grid size
 const unsigned int LIGHT_GRID_HEIGHT = 3;  // point light vertical grid height
 #define M_PI       3.14159265358979323846   // pi
 
+struct InstanceData {
+	glm::vec4 instanceParam;
+	glm::mat4 instanceMatrix;
+};
+
 // Node: separation < 1.0 will cause lights to penetrate each other, and > 1.0 they will separate (1.0 is just touching)
+void configurePointLights(std::vector<InstanceData>& modelData, float radius, float separation, float yOffset)
+{
+	srand(glfwGetTime());
+	// add some uniformly spaced point lights
+	for (unsigned int lightIndexX = 0; lightIndexX < LIGHT_GRID_WIDTH; lightIndexX++)
+	{
+		for (unsigned int lightIndexZ = 0; lightIndexZ < LIGHT_GRID_WIDTH; lightIndexZ++)
+		{
+			for (unsigned int lightIndexY = 0; lightIndexY < LIGHT_GRID_HEIGHT; lightIndexY++)
+			{
+				float diameter = 2.0f * radius;
+				float xPos = (lightIndexX - (LIGHT_GRID_WIDTH - 1.0f) / 2.0f) * (diameter * separation);
+				float zPos = (lightIndexZ - (LIGHT_GRID_WIDTH - 1.0f) / 2.0f) * (diameter * separation);
+				float yPos = (lightIndexY - (LIGHT_GRID_HEIGHT - 1.0f) / 2.0f) * (diameter * separation) + yOffset;
+				double angle = double(rand()) * 2.0 * M_PI / (double(RAND_MAX));
+				double length = double(rand()) * 0.5 / (double(RAND_MAX));
+				float xOffset = cos(angle) * length;
+				float zOffset = sin(angle) * length;
+				xPos += xOffset;
+				zPos += zOffset;
+				// also calculate random color
+				float rColor = ((rand() % 100) / 200.0f) + 0.5; // between 0.5 and 1.0
+				float gColor = ((rand() % 100) / 200.0f) + 0.5; // between 0.5 and 1.0
+				float bColor = ((rand() % 100) / 200.0f) + 0.5; // between 0.5 and 1.0
+
+				int curLight = lightIndexX * LIGHT_GRID_WIDTH * LIGHT_GRID_HEIGHT + lightIndexZ * LIGHT_GRID_HEIGHT + lightIndexY;
+				glm::mat4 model = glm::mat4(1.0f);
+				model = glm::translate(model, glm::vec3(xPos, yPos, zPos));
+				// now add to list of matrices
+				InstanceData d;
+				d.instanceParam = glm::vec4(rColor, gColor, bColor, radius);
+				d.instanceMatrix = model;
+				modelData.emplace_back(d);
+			}
+		}
+	}
+}
+
 void configurePointLights(std::vector<glm::mat4>& modelMatrices, std::vector<glm::vec4>& modelColorSizes, float radius, float separation, float yOffset)
 {
 	srand(glfwGetTime());
@@ -53,7 +96,7 @@ void Example00X()
 	glm::mat4 perspective = glm::perspective(glm::radians(60.0f), (float)Window::GetWidth() / (float)Window::GetHeight(), 0.1f, 1000.f);
 	glViewport(0, 0, Window::GetWidth(), Window::GetHeight());
 
-	glEnable(GL_BLEND);
+	//glEnable(GL_BLEND);
 	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	//glDepthMask(GL_TRUE);
 
@@ -82,9 +125,13 @@ void Example00X()
 	// lighting info
 	// -------------
 	// instance array data for our light volumes
-	std::vector<glm::mat4> modelMatrices;
-	std::vector<glm::vec4> modelColorSizes;
-	configurePointLights(modelMatrices, modelColorSizes, pointLightRadius, pointLightSeparation, pointLightVerticalOffset);
+	//std::vector<glm::mat4> modelMatrices;
+	//std::vector<glm::vec4> modelColorSizes;
+	//configurePointLights(modelMatrices, modelColorSizes, pointLightRadius, pointLightSeparation, pointLightVerticalOffset);
+
+	std::vector<InstanceData> instanceData;
+	configurePointLights(instanceData, pointLightRadius, pointLightSeparation, pointLightVerticalOffset);
+
 
 	class SceneLight
 	{
@@ -124,26 +171,38 @@ void Example00X()
 
 	ModelRef sphereModel{ new Model("Data/Models/Sphere.obj") };
 	auto sphereVao = (*sphereModel)[0]->GetVAO();
+	GLBufferRef instanceBuffer{ new GLBuffer(instanceData) };
 	// TODO
 	{
-		glEnableVertexArrayAttrib(m_handle, format.attribIndex);
-		glVertexArrayAttribFormat(m_handle, format.attribIndex, format.size, format.type, GL_FALSE, format.relativeOffset);
-		glVertexArrayAttribBinding(m_handle, format.attribIndex, 0);
+		// vertex data
+		glEnableVertexArrayAttrib(*sphereVao, 0);
+		glVertexArrayAttribBinding(*sphereVao, 0, 0);
+		glVertexArrayAttribFormat(*sphereVao, 0, 3, GL_FLOAT, GL_FALSE, offsetof(MeshVertex, position));
 
+		// instance data
+		glEnableVertexArrayAttrib(*sphereVao, 2);
+		glVertexArrayAttribBinding(*sphereVao, 2, 1);
+		glVertexArrayAttribFormat(*sphereVao, 2, 4, GL_FLOAT, GL_FALSE, offsetof(InstanceData, instanceParam));
 
-		glEnableVertexAttribArray(3);
-		glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)0);
-		glEnableVertexAttribArray(4);
-		glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(sizeof(glm::vec4)));
-		glEnableVertexAttribArray(5);
-		glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(2 * sizeof(glm::vec4)));
-		glEnableVertexAttribArray(6);
-		glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(3 * sizeof(glm::vec4)));
+		glEnableVertexArrayAttrib(*sphereVao, 3);
+		glVertexArrayAttribBinding(*sphereVao, 3, 1);
+		glVertexArrayAttribFormat(*sphereVao, 3, 4, GL_FLOAT, GL_FALSE, offsetof(InstanceData, instanceMatrix));
 
-		glVertexAttribDivisor(3, 1);
-		glVertexAttribDivisor(4, 1);
-		glVertexAttribDivisor(5, 1);
-		glVertexAttribDivisor(6, 1);
+		glEnableVertexArrayAttrib(*sphereVao, 4);
+		glVertexArrayAttribBinding(*sphereVao, 4, 1);
+		glVertexArrayAttribFormat(*sphereVao, 4, 4, GL_FLOAT, GL_FALSE, offsetof(InstanceData, instanceMatrix) + sizeof(float) * 4);
+
+		glEnableVertexArrayAttrib(*sphereVao, 5);
+		glVertexArrayAttribBinding(*sphereVao, 5, 1);
+		glVertexArrayAttribFormat(*sphereVao, 5, 4, GL_FLOAT, GL_FALSE, offsetof(InstanceData, instanceMatrix) + sizeof(float) * 8);
+
+		glEnableVertexArrayAttrib(*sphereVao, 6);
+		glVertexArrayAttribBinding(*sphereVao, 6, 1);
+		glVertexArrayAttribFormat(*sphereVao, 6, 4, GL_FLOAT, GL_FALSE, offsetof(InstanceData, instanceMatrix) + sizeof(float) * 12);
+
+		glVertexArrayVertexBuffer(*sphereVao, 1, *instanceBuffer, 0, sizeof(InstanceData));
+		glVertexArrayBindingDivisor(*sphereVao, 1, 1);
+
 	}
 
 
@@ -191,6 +250,7 @@ void Example00X()
 			glViewport(0, 0, Window::GetWidth(), Window::GetHeight());
 			gbuffer->Resize(Window::GetWidth(), Window::GetHeight());
 			lightingPassFB.Resize(Window::GetWidth(), Window::GetHeight());
+			pointsLightingPassFB.Resize(Window::GetWidth(), Window::GetHeight());
 		}
 
 		// Update
@@ -323,6 +383,9 @@ void Example00X()
 			gbuffer->BindForReading();
 
 			// draw instances
+			sphereVao->Bind();
+			glDrawElementsInstanced(GL_TRIANGLES, 2280, GL_UNSIGNED_INT, 0, totalLights);
+
 
 			glDisable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -335,10 +398,16 @@ void Example00X()
 		{
 			glDisable(GL_DEPTH_TEST);
 			Renderer::MainFrameBuffer();
-			Renderer::BlitFrameBuffer(lightingPassFB.fbo, nullptr,
+			/*Renderer::BlitFrameBuffer(lightingPassFB.fbo, nullptr,
+				0, 0, Window::GetWidth(), Window::GetHeight(),
+				0, 0, Window::GetWidth(), Window::GetHeight(),
+				GL_COLOR_BUFFER_BIT, GL_NEAREST);*/
+			Renderer::BlitFrameBuffer(pointsLightingPassFB.fbo, nullptr,
 				0, 0, Window::GetWidth(), Window::GetHeight(),
 				0, 0, Window::GetWidth(), Window::GetHeight(),
 				GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+
 		}
 
 		IMGUI::Draw();

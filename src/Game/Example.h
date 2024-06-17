@@ -476,7 +476,7 @@ void main()
 			const char* fragSource = R"(
 #version 460
 
-out vec4 outFragColor;
+layout (location = 0) out vec4 outFragColor;
 
 in vec3 lightColor;
 in float lightRadius;
@@ -536,7 +536,7 @@ void main()
 		void Bind()
 		{
 			constexpr auto depthClearVal = 1.0f;
-			fbo->ClearFramebuffer(GL_COLOR, 0, glm::value_ptr(glm::vec3(0.2, 0.6f, 1.0f)));
+			fbo->ClearFramebuffer(GL_COLOR, 0, glm::value_ptr(glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)));
 			fbo->ClearFramebuffer(GL_DEPTH, 0, &depthClearVal);
 
 			fbo->Bind();
