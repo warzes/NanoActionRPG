@@ -2,6 +2,9 @@
 	моделирование
 
 
+https://github.com/azer89/SimpleOpenGL
+
+
 https://github.com/timurson/DeferredShading
 
 

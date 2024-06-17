@@ -12,16 +12,7 @@ namespace UtilsExample
 			m_width = width;
 			m_height = height;
 
-			depth.reset(new GLTexture2D(GL_DEPTH_COMPONENT32F, GL_DEPTH, GL_FLOAT, m_width, m_height, nullptr, GL_NEAREST));
-			/*
-			GL_TEXTURE_MIN_FILTER, GL_NEAREST
-			GL_TEXTURE_MAG_FILTER, GL_NEAREST
-			GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER
-			GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER
-			float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-			GL_TEXTURE_BORDER_COLOR, borderColor)
-			// attach depth texture as FBO's depth buffer
-			*/
+			depth.reset(new GLTexture2D(GL_DEPTH_COMPONENT32F, GL_DEPTH, GL_FLOAT, m_width, m_height, nullptr, GL_NEAREST, GL_CLAMP_TO_BORDER, { 1.0f, 1.0f, 1.0f, 1.0f }));
 
 			fbo.reset(new GLFramebuffer({}, depth));
 
@@ -81,7 +72,6 @@ void main()
 		int m_height = 0;
 	};
 
-
 	class GBuffer final
 	{
 	public:
@@ -101,7 +91,7 @@ void main()
 
 		GLTexture2DRef m_position = nullptr;
 		GLTexture2DRef m_normal = nullptr;
-		GLTexture2DRef m_albedo = nullptr;
+		GLTexture2DRef m_diffuse = nullptr;
 		GLTexture2DRef m_specular = nullptr;
 		GLTexture2DRef m_depth = nullptr;
 
@@ -217,7 +207,7 @@ void main()
 		m_fbo.reset();
 		m_position.reset();
 		m_normal.reset();
-		m_albedo.reset();
+		m_diffuse.reset();
 		m_specular.reset();
 		m_depth.reset();
 	}
@@ -229,11 +219,11 @@ void main()
 
 		m_position.reset(new GLTexture2D(GL_RGB32F, GL_RGB, GL_FLOAT, width, height, nullptr, GL_NEAREST));
 		m_normal.reset(new GLTexture2D(GL_RGB32F, GL_RGB, GL_FLOAT, width, height, nullptr, GL_NEAREST));
-		m_albedo.reset(new GLTexture2D(GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, width, height, nullptr, GL_NEAREST));
+		m_diffuse.reset(new GLTexture2D(GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, width, height, nullptr, GL_NEAREST));
 		m_specular.reset(new GLTexture2D(GL_RGBA32F, GL_RGBA, GL_FLOAT, width, height, nullptr, GL_NEAREST));
 		m_depth.reset(new GLTexture2D(GL_DEPTH_COMPONENT32F, GL_DEPTH, GL_FLOAT, width, height, nullptr, GL_NEAREST));
 
-		m_fbo.reset(new GLFramebuffer({ m_position, m_normal, m_albedo, m_specular }, m_depth));
+		m_fbo.reset(new GLFramebuffer({ m_position, m_normal, m_diffuse, m_specular }, m_depth));
 	}
 
 	void GBuffer::BindForWriting()
@@ -257,7 +247,7 @@ void main()
 	{
 		m_position->Bind(0);
 		m_normal->Bind(1);
-		m_albedo->Bind(2);
+		m_diffuse->Bind(2);
 		m_specular->Bind(3);
 	}
 
@@ -314,7 +304,7 @@ out vec4 outFragColor;
 
 layout (binding = 0) uniform sampler2D positionTexture;
 layout (binding = 1) uniform sampler2D normalTexture;
-layout (binding = 2) uniform sampler2D albedoTexture;
+layout (binding = 2) uniform sampler2D diffuseTexture;
 layout (binding = 3) uniform sampler2D specularTexture;
 layout (binding = 4) uniform sampler2D shadowMapTexture;
 
@@ -375,7 +365,7 @@ void main()
 	// retrieve data form gbuffer
 	const vec3 FragPos = texture(positionTexture, TexCoords).rgb;
 	const vec3 Normal = texture(normalTexture, TexCoords).rgb;
-	const vec3 Diffuse = texture(albedoTexture, TexCoords).rgb;
+	const vec3 Diffuse = texture(diffuseTexture, TexCoords).rgb;
 	const vec4 Specular = texture(specularTexture, TexCoords);
 
 	// do Phong lighting calculation
@@ -446,9 +436,137 @@ void main()
 		int height = 0;
 	};
 
+	class PointsLightingPassFB
+	{
+	public:
+		void Create(int inWidth, int inHeight)
+		{
+			Resize(inWidth, inHeight);
+
+#pragma region VertexShader
+			const char* vertSource = R"(
+#version 460
+
+out gl_PerVertex { vec4 gl_Position; };
+
+layout (location = 0) in vec3 aPosition;
+layout (location = 2) in vec4 aInstanceParam;  // (RGB) light color and (A) is light radius
+layout (location = 3) in mat4 aInstanceMatrix;
+
+out vec3 lightColor;
+out vec3 lightPosition;
+out float lightRadius;
+
+// ------------- Uniform --------------
+layout (location = 0) uniform mat4 uProjectionMatrix;
+layout (location = 1) uniform mat4 uViewMatrix;
+
+void main()
+{
+	lightColor = aInstanceParam.rgb;
+	lightRadius = aInstanceParam.w;
+	// extract light position from the instance model matrix
+	lightPosition = vec3(aInstanceMatrix[3]);
+    gl_Position = uProjectionMatrix * uViewMatrix * aInstanceMatrix * vec4(lightRadius * aPosition, 1.0);
+}
+)";
+#pragma endregion
+
+#pragma region FragmentShader
+			const char* fragSource = R"(
+#version 460
+
+out vec4 outFragColor;
+
+in vec3 lightColor;
+in float lightRadius;
+in vec3 lightPosition;
+
+layout (binding = 0) uniform sampler2D gPosition;
+layout (binding = 1) uniform sampler2D gNormal;
+layout (binding = 2) uniform sampler2D gDiffuse;
+layout (binding = 3) uniform sampler2D gSpecular;
+
+layout (location = 0) uniform vec3 uCameraPos;
+layout (location = 1) uniform float lightIntensity;
+layout (location = 2) uniform vec2 screenSize;
+layout (location = 3) uniform float glossiness;
+
+void main()
+{
+	vec2 uvCoords = gl_FragCoord.xy / screenSize;
+	vec3 FragPos = texture(gPosition, uvCoords).rgb;
+	vec3 Normal = texture(gNormal, uvCoords).rgb;
+	vec3 Diffuse = texture(gDiffuse, uvCoords).rgb;
+	vec4 Specular = texture(gSpecular, uvCoords);
+	
+	// do Phong lighting calculation
+	vec3 ambient  = Diffuse * 0.2; // ambient contribution
+	vec3 viewDir  = normalize(uCameraPos - FragPos);
+	
+	// diffuse
+	vec3 lightDir = normalize(lightPosition - FragPos);
+	vec3 diffuse = max(dot(Normal, lightDir), 0.0) * Diffuse * lightColor;
+	// specular
+	vec3 halfwayDir = normalize(lightDir + viewDir);  
+	float spec = pow(max(dot(Normal, halfwayDir), 0.0), glossiness) * Specular.a;
+	vec3 specular = lightColor * spec * Specular.rgb;
+	// attenuation
+	float distToL = length(lightPosition - FragPos);
+	float attenuation = 1.0 - pow(smoothstep(0.0, 1.0, clamp(distToL/lightRadius, 0.0, 1.0)), 4.0);
+	vec3 result = ambient + diffuse + specular;
+	float noZTestFix = step(0.0, lightRadius - distToL); //0.0 if distToL > radius, 1.0 otherwise
+	vec4 outColor = vec4(result, noZTestFix) * attenuation * lightIntensity;
+	
+	outFragColor = outColor;
+}
+)";
+#pragma endregion
+
+			program = std::make_shared<GLProgramPipeline>(vertSource, fragSource);
+		}
+		void Destroy()
+		{
+			program.reset();
+			fbo.reset();
+			color.reset();
+			width = height = 0;
+		}
+
+		void Bind()
+		{
+			constexpr auto depthClearVal = 1.0f;
+			fbo->ClearFramebuffer(GL_COLOR, 0, glm::value_ptr(glm::vec3(0.2, 0.6f, 1.0f)));
+			fbo->ClearFramebuffer(GL_DEPTH, 0, &depthClearVal);
+
+			fbo->Bind();
+			Renderer::SetViewport(0, 0, width, height);
+
+			program->Bind();
+		}
+
+		void Resize(int inWidth, int inHeight)
+		{
+			width = inWidth;
+			height = inHeight;
+
+			color.reset(new GLTexture2D(GL_RGBA8, GL_RGBA, width, height, nullptr, GL_NEAREST));
+
+			fbo.reset(new GLFramebuffer({ color }));
+		}
+
+		GLFramebufferRef fbo = nullptr;
+		GLTexture2DRef color = nullptr;
+
+		GLProgramPipelineRef program = nullptr;
+
+		int width = 0;
+		int height = 0;
+	};
 
 
-	class DeferredLightingPassFB
+
+	class OldDeferredLightingPassFB
 	{
 	public:
 		void Create(int inWidth, int inHeight)
@@ -956,7 +1074,7 @@ void Example003()
 
 	UtilsExample::GBufferRef gbuffer{ new UtilsExample::GBuffer(Window::GetWidth(), Window::GetHeight()) };
 	
-	UtilsExample::DeferredLightingPassFB lightingPassFB;
+	UtilsExample::OldDeferredLightingPassFB lightingPassFB;
 	lightingPassFB.Create(Window::GetWidth(), Window::GetHeight());
 
 	GLVertexArrayRef VAOEmpty{ new GLVertexArray };

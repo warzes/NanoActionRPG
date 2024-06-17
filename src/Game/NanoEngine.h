@@ -318,7 +318,7 @@ class GLTexture2D final
 public:
 	GLTexture2D() = delete;
 	GLTexture2D(GLenum internalFormat, GLenum format, GLsizei width, GLsizei height, void* data = nullptr, GLint filter = GL_LINEAR, GLint repeat = GL_REPEAT, bool generateMipMaps = false);
-	GLTexture2D(GLenum internalFormat, GLenum format, GLenum dataType, GLsizei width, GLsizei height, void* data = nullptr, GLint filter = GL_LINEAR, GLint repeat = GL_REPEAT, bool generateMipMaps = false);
+	GLTexture2D(GLenum internalFormat, GLenum format, GLenum dataType, GLsizei width, GLsizei height, void* data = nullptr, GLint filter = GL_LINEAR, GLint repeat = GL_REPEAT, const glm::vec4& borderColor = glm::vec4(0.0f), bool generateMipMaps = false);
 	GLTexture2D(std::string_view filepath, int comp = STBI_rgb_alpha, bool generateMipMaps = false);
 
 	~GLTexture2D();
@@ -331,7 +331,7 @@ public:
 private:
 	void createHandle();
 	void destroyHandle();
-	void createTexture(GLenum internalFormat, GLenum format, GLenum dataType, GLsizei width, GLsizei height, void* data = nullptr, GLint filter = GL_LINEAR, GLint repeat = GL_REPEAT, bool generateMipMaps = false);
+	void createTexture(GLenum internalFormat, GLenum format, GLenum dataType, GLsizei width, GLsizei height, void* data = nullptr, GLint filter = GL_LINEAR, GLint repeat = GL_REPEAT, const glm::vec4& borderColor = glm::vec4(0.0f), bool generateMipMaps = false);
 
 	GLuint m_handle = 0;
 };
@@ -455,8 +455,10 @@ public:
 
 	[[nodiscard]] AABB GetBounding() const;
 	[[nodiscard]] std::vector<glm::vec3> GetTriangle() const;
+	[[nodiscard]] GLVertexArrayRef GetVAO();
 
 	void Draw(const GLProgramPipelineRef& program);
+
 private:
 	void init();
 
@@ -485,6 +487,8 @@ public:
 
 	[[nodiscard]] AABB GetBounding() const;
 	[[nodiscard]] std::vector<glm::vec3> GetTriangle() const;
+
+	[[nodiscard]] MeshRef operator[](size_t idx);
 
 private:
 	void loadAssimpModel(const std::string& modelPath, bool flipUV);

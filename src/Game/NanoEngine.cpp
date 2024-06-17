@@ -443,14 +443,14 @@ void GLVertexArray::setIndexBuffer(GLBufferRef ibo, size_t indexNum, IndexFormat
 #pragma region GLTexture2D
 
 GLTexture2D::GLTexture2D(GLenum internalFormat, GLenum format, GLsizei width, GLsizei height, void* data, GLint filter, GLint repeat, bool generateMipMaps)
-	: GLTexture2D(internalFormat, format, GL_UNSIGNED_BYTE, width, height, data, filter, repeat, generateMipMaps)
+	: GLTexture2D(internalFormat, format, GL_UNSIGNED_BYTE, width, height, data, filter, repeat, glm::vec4(0.0f), generateMipMaps)
 {
 }
 
-GLTexture2D::GLTexture2D(GLenum internalFormat, GLenum format, GLenum dataType, GLsizei width, GLsizei height, void* data, GLint filter, GLint repeat, bool generateMipMaps)
+GLTexture2D::GLTexture2D(GLenum internalFormat, GLenum format, GLenum dataType, GLsizei width, GLsizei height, void* data, GLint filter, GLint repeat, const glm::vec4& borderColor, bool generateMipMaps)
 {
 	createHandle();
-	createTexture(internalFormat, format, dataType, width, height, data, filter, repeat, generateMipMaps);
+	createTexture(internalFormat, format, dataType, width, height, data, filter, repeat, borderColor, generateMipMaps);
 }
 
 GLTexture2D::GLTexture2D(std::string_view filepath, int comp, bool generateMipMaps)
@@ -467,7 +467,7 @@ GLTexture2D::GLTexture2D(std::string_view filepath, int comp, bool generateMipMa
 	const auto [internalFormat, format] = STBImageToOpenGLFormat((comp));
 
 	createHandle();
-	createTexture(internalFormat, format, GL_UNSIGNED_BYTE, w, h, data, GL_LINEAR, GL_REPEAT, generateMipMaps);
+	createTexture(internalFormat, format, GL_UNSIGNED_BYTE, w, h, data, GL_LINEAR, GL_REPEAT, glm::vec4(0.0f), generateMipMaps);
 	stbi_image_free(data);
 }
 
@@ -493,7 +493,7 @@ void GLTexture2D::destroyHandle()
 	m_handle = 0;
 }
 
-void GLTexture2D::createTexture(GLenum internalFormat, GLenum format, GLenum dataType, GLsizei width, GLsizei height, void* data, GLint filter, GLint repeat, bool generateMipMaps)
+void GLTexture2D::createTexture(GLenum internalFormat, GLenum format, GLenum dataType, GLsizei width, GLsizei height, void* data, GLint filter, GLint repeat, const glm::vec4& borderColor, bool generateMipMaps)
 {
 	int levels = 1;
 	if (generateMipMaps)
@@ -518,6 +518,8 @@ void GLTexture2D::createTexture(GLenum internalFormat, GLenum format, GLenum dat
 	glTextureParameteri(m_handle, GL_TEXTURE_WRAP_S, repeat);
 	glTextureParameteri(m_handle, GL_TEXTURE_WRAP_T, repeat);
 	glTextureParameteri(m_handle, GL_TEXTURE_WRAP_R, repeat);
+
+	glTextureParameterfv(m_handle, GL_TEXTURE_BORDER_COLOR, glm::value_ptr(borderColor));
 
 	if (data)
 		glTextureSubImage2D(m_handle, 0, 0, 0, width, height, format, dataType, data);
@@ -778,6 +780,11 @@ std::vector<glm::vec3> Mesh::GetTriangle() const
 	return triangles;
 }
 
+GLVertexArrayRef Mesh::GetVAO()
+{
+	return m_vao;
+}
+
 void Mesh::Draw(const GLProgramPipelineRef& program)
 {
 	assert(::IsValid(program));
@@ -847,6 +854,12 @@ std::vector<glm::vec3> Model::GetTriangle() const
 		Triangle.insert(Triangle.end(), temp.begin(), temp.end());
 	}
 	return Triangle;
+}
+
+MeshRef Model::operator[](size_t idx)
+{
+	assert(idx < m_meshes.size());
+	return m_meshes[idx];
 }
 
 void Model::loadAssimpModel(const std::string& modelPath, bool flipUV)

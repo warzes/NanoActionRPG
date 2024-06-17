@@ -1,5 +1,47 @@
 ﻿#pragma once
 
+const float INITIAL_POINT_LIGHT_RADIUS = 0.663f;
+const unsigned int LIGHT_GRID_WIDTH = 10;  // point light grid size
+const unsigned int LIGHT_GRID_HEIGHT = 3;  // point light vertical grid height
+#define M_PI       3.14159265358979323846   // pi
+
+// Node: separation < 1.0 will cause lights to penetrate each other, and > 1.0 they will separate (1.0 is just touching)
+void configurePointLights(std::vector<glm::mat4>& modelMatrices, std::vector<glm::vec4>& modelColorSizes, float radius, float separation, float yOffset)
+{
+	srand(glfwGetTime());
+	// add some uniformly spaced point lights
+	for (unsigned int lightIndexX = 0; lightIndexX < LIGHT_GRID_WIDTH; lightIndexX++)
+	{
+		for (unsigned int lightIndexZ = 0; lightIndexZ < LIGHT_GRID_WIDTH; lightIndexZ++)
+		{
+			for (unsigned int lightIndexY = 0; lightIndexY < LIGHT_GRID_HEIGHT; lightIndexY++)
+			{
+				float diameter = 2.0f * radius;
+				float xPos = (lightIndexX - (LIGHT_GRID_WIDTH - 1.0f) / 2.0f) * (diameter * separation);
+				float zPos = (lightIndexZ - (LIGHT_GRID_WIDTH - 1.0f) / 2.0f) * (diameter * separation);
+				float yPos = (lightIndexY - (LIGHT_GRID_HEIGHT - 1.0f) / 2.0f) * (diameter * separation) + yOffset;
+				double angle = double(rand()) * 2.0 * M_PI / (double(RAND_MAX));
+				double length = double(rand()) * 0.5 / (double(RAND_MAX));
+				float xOffset = cos(angle) * length;
+				float zOffset = sin(angle) * length;
+				xPos += xOffset;
+				zPos += zOffset;
+				// also calculate random color
+				float rColor = ((rand() % 100) / 200.0f) + 0.5; // between 0.5 and 1.0
+				float gColor = ((rand() % 100) / 200.0f) + 0.5; // between 0.5 and 1.0
+				float bColor = ((rand() % 100) / 200.0f) + 0.5; // between 0.5 and 1.0
+
+				int curLight = lightIndexX * LIGHT_GRID_WIDTH * LIGHT_GRID_HEIGHT + lightIndexZ * LIGHT_GRID_HEIGHT + lightIndexY;
+				glm::mat4 model = glm::mat4(1.0f);
+				model = glm::translate(model, glm::vec3(xPos, yPos, zPos));
+				// now add to list of matrices
+				modelMatrices.emplace_back(model);
+				modelColorSizes.emplace_back(glm::vec4(rColor, gColor, bColor, radius));
+			}
+		}
+	}
+}
+
 void Example00X()
 {
 	Window::Create("Game", 1600, 900);
@@ -21,10 +63,6 @@ void Example00X()
 	Camera camera;
 	camera.SetPosition({ 0.0f, 0.3f, -1.0f });
 
-	const float INITIAL_POINT_LIGHT_RADIUS = 0.663f;
-	const unsigned int LIGHT_GRID_WIDTH = 10;  // point light grid size
-	const unsigned int LIGHT_GRID_HEIGHT = 3;  // point light vertical grid height
-
 	bool enableShadows = true;
 	bool drawPointLights = false;
 	bool showDepthMap = false;
@@ -40,6 +78,14 @@ void Example00X()
 	float pointLightSeparation = 0.670f;
 	const int totalLights = LIGHT_GRID_WIDTH * LIGHT_GRID_WIDTH * LIGHT_GRID_HEIGHT;
 
+	// initialize point lights
+	// lighting info
+	// -------------
+	// instance array data for our light volumes
+	std::vector<glm::mat4> modelMatrices;
+	std::vector<glm::vec4> modelColorSizes;
+	configurePointLights(modelMatrices, modelColorSizes, pointLightRadius, pointLightSeparation, pointLightVerticalOffset);
+
 	class SceneLight
 	{
 	public:
@@ -49,8 +95,9 @@ void Example00X()
 		float radius; // light's radius
 	};
 
-	SceneLight globalLight(glm::vec3(-2.5f, 5.0f, -1.25f), glm::vec3(1.0f, 1.0f, 1.0f), 0.125f);
-
+	//SceneLight globalLight(glm::vec3(-2.5f, 5.0f, -1.25f), glm::vec3(1.0f, 1.0f, 1.0f), 0.125f);
+	//SceneLight globalLight(glm::vec3(0.5f, -0.3f, 0.0f), glm::vec3(1.0f, 1.0f, 0.0f), 0.125f);
+	SceneLight globalLight(glm::vec3(-2.5f, 5.0f, -1.25f), glm::vec3(1.0f, 1.0f, 0.0f), 0.125f);
 
 	UtilsExample::SimpleShadowMapPass simpleShadowMapFB;
 	simpleShadowMapFB.Create(UtilsExample::SHADOW_WIDTH, UtilsExample::SHADOW_HEIGHT);
@@ -61,6 +108,8 @@ void Example00X()
 	UtilsExample::CoreLightingPassFB lightingPassFB;
 	lightingPassFB.Create(Window::GetWidth(), Window::GetHeight());
 
+	UtilsExample::PointsLightingPassFB pointsLightingPassFB;
+	pointsLightingPassFB.Create(Window::GetWidth(), Window::GetHeight());
 
 
 	GLVertexArrayRef VAOEmpty{ new GLVertexArray };
@@ -72,6 +121,31 @@ void Example00X()
 	//ModelRef model{ new Model("Data/Models/sibenik/sibenik.obj") };
 
 	ModelRef model2{ new Model("Data/Models/Dragon.obj") };
+
+	ModelRef sphereModel{ new Model("Data/Models/Sphere.obj") };
+	auto sphereVao = (*sphereModel)[0]->GetVAO();
+	// TODO
+	{
+		glEnableVertexArrayAttrib(m_handle, format.attribIndex);
+		glVertexArrayAttribFormat(m_handle, format.attribIndex, format.size, format.type, GL_FALSE, format.relativeOffset);
+		glVertexArrayAttribBinding(m_handle, format.attribIndex, 0);
+
+
+		glEnableVertexAttribArray(3);
+		glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)0);
+		glEnableVertexAttribArray(4);
+		glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(sizeof(glm::vec4)));
+		glEnableVertexAttribArray(5);
+		glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(2 * sizeof(glm::vec4)));
+		glEnableVertexAttribArray(6);
+		glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(3 * sizeof(glm::vec4)));
+
+		glVertexAttribDivisor(3, 1);
+		glVertexAttribDivisor(4, 1);
+		glVertexAttribDivisor(5, 1);
+		glVertexAttribDivisor(6, 1);
+	}
+
 
 #pragma region lighting info
 	const unsigned int NR_LIGHTS = 64;
@@ -178,6 +252,7 @@ void Example00X()
 				{
 					simpleShadowMapFB.program->SetVertexUniform(1, glm::mat4(1.0f));
 					model->Draw(simpleShadowMapFB.program);
+
 					glm::mat4 modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 0.0f));
 					glm::mat4 modelScale = glm::scale(modelTranslate, glm::vec3(0.2f));
 					simpleShadowMapFB.program->SetVertexUniform(1, modelScale);
@@ -222,6 +297,38 @@ void Example00X()
 			simpleShadowMapFB.depth->Bind(4);
 			VAOEmpty->Bind();
 			glDrawArrays(GL_TRIANGLES, 0, 6);
+		}
+		//else
+		//{
+		//	// отрисовка буферов из gbuffer
+		//}
+
+		// 3.5 lighting pass: render point lights on top of main scene with additive blending and utilizing G-Buffer for lighting.
+		//if (gBufferMode == 0)
+		{
+			glEnable(GL_CULL_FACE);
+			glFrontFace(GL_CW); // TODO: чтобы не рисовало сзади?
+			glDisable(GL_DEPTH_TEST);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_ONE, GL_ONE);
+
+			pointsLightingPassFB.Bind();
+			pointsLightingPassFB.program->SetVertexUniform(0, perspective);
+			pointsLightingPassFB.program->SetVertexUniform(1, camera.GetViewMatrix());
+			pointsLightingPassFB.program->SetFragmentUniform(0, camera.position);
+			pointsLightingPassFB.program->SetFragmentUniform(1, pointLightIntensity);
+			pointsLightingPassFB.program->SetFragmentUniform(2, glm::vec2(Window::GetWidth(), Window::GetHeight()));
+			pointsLightingPassFB.program->SetFragmentUniform(3, glossiness);
+
+			gbuffer->BindForReading();
+
+			// draw instances
+
+			glDisable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glFrontFace(GL_CCW);
+			glDisable(GL_BLEND);
+			(GL_CULL_FACE);
 		}
 
 		// Main frame
