@@ -1390,9 +1390,6 @@ bool Mouse::IsPressed(Button button)
 
 glm::ivec2 Mouse::GetPosition()
 {
-	//double xpos, ypos;
-	//glfwGetCursorPos(Engine.window, &xpos, &ypos);
-	//return { xpos, ypos };
 	return MouseState.position;
 }
 

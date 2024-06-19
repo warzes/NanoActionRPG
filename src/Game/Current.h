@@ -68,7 +68,7 @@ void Example00X()
 	bool drawPointLightsWireframe = true;
 	glm::vec3 diffuseColor = glm::vec3(0.847f, 0.52f, 0.19f);
 	glm::vec4 specularColor = glm::vec4(1.0f, 1.0f, 1.0f, 0.8f);
-	float glossiness = 16.0f;
+	const float glossiness = 16.0f;
 	float gLinearAttenuation = 0.09f;
 	float gQuadraticAttenuation = 0.032f;
 	float pointLightIntensity = 0.736f;
@@ -99,9 +99,9 @@ void Example00X()
 
 	UtilsExample::GBufferRef gbuffer{ new UtilsExample::GBuffer(Window::GetWidth(), Window::GetHeight()) };
 		
+	// TODO: объединить в один шейдер, так как в разделении нет смысла
 	UtilsExample::CoreLightingPassFB lightingPassFB;
 	lightingPassFB.Create(Window::GetWidth(), Window::GetHeight());
-
 	UtilsExample::PointsLightingPassFB pointsLightingPassFB;
 	pointsLightingPassFB.Create(Window::GetWidth(), Window::GetHeight());
 
@@ -279,6 +279,7 @@ void Example00X()
 			sphere->Draw();
 		}
 
+		// TODO: объединить в один шейдер, так как в разделении нет смысла
 		// 3. lighting pass: calculate lighting by iterating over a screen filled quad pixel-by-pixel using the gbuffer's content and shadow map
 		//if (gBufferMode == 0) // если цифра, то дебажный режим для вывода выбранной текстуры из gbuffer
 		{
@@ -303,6 +304,7 @@ void Example00X()
 		//	// отрисовка буферов из gbuffer
 		//}
 
+		// TODO: объединить в один шейдер, так как в разделении нет смысла
 		// 3.5 lighting pass: render point lights on top of main scene with additive blending and utilizing G-Buffer for lighting.
 		//if (gBufferMode == 0)
 		{

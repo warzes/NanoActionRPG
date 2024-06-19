@@ -110,7 +110,6 @@ void main()
 #pragma region VertexShader
 		const char* vertSource = R"(
 #version 460 core
-#extension GL_ARB_bindless_texture : require
 
 // -----------  Per vertex  -----------
 layout (location = 0) in vec3 aPosition;
@@ -144,12 +143,12 @@ layout (location = 2) uniform mat4 uWorldMatrix;
 void main()
 {	
 	vec4 worldPosition = uWorldMatrix * vec4(aPosition, 1.0);
-	mat3 worldNormal = transpose(inverse(mat3(uWorldMatrix))); //vec4 worldNormal = uWorldMatrix * vec4(aNormal, 0.0);
+	mat3 worldNormal = transpose(inverse(mat3(uWorldMatrix)));
 	vec4 worldTangent = uWorldMatrix * vec4(aTangent, 0.0);
 
 	outData.position = worldPosition.xyz;
 	outData.color = aColor;
-	outData.normal = worldNormal * aNormal; //outData.normal = worldNormal.xyz;
+	outData.normal = worldNormal * aNormal;
 	outData.texCoords = aTexCoords;
 	outData.tangent = worldTangent.xyz;
 
@@ -161,7 +160,6 @@ void main()
 #pragma region FragmentShader
 		const char* fragSource = R"(
 #version 460 core
-#extension GL_ARB_bindless_texture : require
 
 in DeferredData
 {
@@ -375,21 +373,25 @@ void main()
 	const vec4 Specular = texture(specularTexture, TexCoords);
 
 	// do Phong lighting calculation
-	vec3 ambient  = Diffuse * 0.2; // hard-coded ambient component
+	vec3 ambient  = Diffuse * 0.1; // hard-coded ambient component
 	vec3 viewDir  = normalize(uCameraPos - FragPos);
 
 	// diffuse
 	vec3 lightDir = normalize(uLight.position - FragPos);
 	vec3 diffuse = max(dot(Normal, lightDir), 0.0) * Diffuse * uLight.color;
+
 	// specular
 	vec3 halfwayDir = normalize(lightDir + viewDir);  
 	float spec = pow(max(dot(Normal, halfwayDir), 0.0), uGlossiness) * Specular.a;
 	vec3 specular = uLight.color * spec * Specular.rgb;
+	
 	// attenuation
 	float distance = length(uLight.position - FragPos);
 	float attenuation = 1.0 / (1.0 + uLight.linear * distance + uLight.quadratic * distance * distance);
+
 	diffuse *= attenuation;
 	specular *= attenuation;
+
 	// calculate shadow using PCF
 	float shadow = percentCloserFilteredShadow(FragPos, Normal);
 	
