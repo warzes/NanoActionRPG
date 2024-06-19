@@ -150,6 +150,8 @@ void Example00X()
 	}
 
 	QuadShapeRef quad{ new QuadShape{} };
+	CubeShapeRef cube{ new CubeShape{} };
+	SphereShapeRef sphere{ new SphereShape{} };
 
 	while (!Window::ShouldClose())
 	{
@@ -234,6 +236,21 @@ void Example00X()
 					glm::mat4 modelScale = glm::scale(modelTranslate, glm::vec3(0.2f));
 					simpleShadowMapFB.program->SetVertexUniform(1, modelScale);
 					model2->Draw(simpleShadowMapFB.program);
+
+					modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.65f, 0.0f));
+					modelScale = glm::scale(modelTranslate, glm::vec3(10.0f));
+					gbuffer->GetProgram()->SetVertexUniform(1, modelScale);
+					quad->Draw();
+
+					modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.0f, 0.0f));
+					modelScale = glm::scale(modelTranslate, glm::vec3(2.0f));
+					gbuffer->GetProgram()->SetVertexUniform(1, modelScale);
+					cube->Draw();
+
+					modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(-6.0f, 0.0f, 0.0f));
+					modelScale = glm::scale(modelTranslate, glm::vec3(1.5f));
+					gbuffer->GetProgram()->SetVertexUniform(1, modelScale);
+					sphere->Draw();
 				}
 			}
 		}
@@ -258,9 +275,20 @@ void Example00X()
 			gbuffer->GetProgram()->SetFragmentUniform(0, modelSpecular);
 			model2->Draw(gbuffer->GetProgram());
 
-			modelScale = glm::scale(glm::mat4(1.0f), glm::vec3(10.0f));
+			modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.65f, 0.0f));
+			modelScale = glm::scale(modelTranslate, glm::vec3(10.0f));
 			gbuffer->GetProgram()->SetVertexUniform(2, modelScale);
 			quad->Draw();
+
+			modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.0f, 0.0f));
+			modelScale = glm::scale(modelTranslate, glm::vec3(2.0f));
+			gbuffer->GetProgram()->SetVertexUniform(2, modelScale);
+			cube->Draw();
+
+			modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(-6.0f, 0.0f, 0.0f));
+			modelScale = glm::scale(modelTranslate, glm::vec3(1.5f));
+			gbuffer->GetProgram()->SetVertexUniform(2, modelScale);
+			sphere->Draw();
 		}
 
 		// 3. lighting pass: calculate lighting by iterating over a screen filled quad pixel-by-pixel using the gbuffer's content and shadow map
@@ -330,8 +358,6 @@ void Example00X()
 				0, 0, Window::GetWidth(), Window::GetHeight(),
 				0, 0, Window::GetWidth(), Window::GetHeight(),
 				GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
-
 		}
 
 		IMGUI::Draw();

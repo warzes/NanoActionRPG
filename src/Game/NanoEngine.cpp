@@ -1059,6 +1059,133 @@ std::vector<MeshVertex> QuadShape::getData()
 
 #pragma endregion
 
+#pragma region CubeShape
+
+CubeShape::CubeShape()
+{
+	m_vao = std::make_shared<GLVertexArray>(getData(), GetMeshVertexFormat());
+}
+
+void CubeShape::Draw()
+{
+	m_vao->DrawTriangles();
+}
+
+std::vector<MeshVertex> CubeShape::getData()
+{
+	// TODO: указать правильный Tangent
+	return
+	{
+		// Positions              // Color            // Normals              // Texcoords   // Tangent
+		// Back face
+		{ {-1.0f, -1.0f, -1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f,  0.0f, -1.0f,}, {0.0f, 0.0f} }, // bottom-left
+		{ { 1.0f,  1.0f, -1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f,  0.0f, -1.0f,}, {1.0f, 1.0f} }, // top-right
+		{ { 1.0f, -1.0f, -1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f,  0.0f, -1.0f,}, {1.0f, 0.0f} }, // bottom-right
+		{ { 1.0f,  1.0f, -1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f,  0.0f, -1.0f,}, {1.0f, 1.0f} }, // top-right
+		{ {-1.0f, -1.0f, -1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f,  0.0f, -1.0f,}, {0.0f, 0.0f} }, // bottom-left
+		{ {-1.0f,  1.0f, -1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f,  0.0f, -1.0f,}, {0.0f, 1.0f} }, // top-left
+		// Front face
+		{ {-1.0f, -1.0f,  1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f,  0.0f,  1.0f,}, {0.0f, 0.0f} }, // bottom-left
+		{ { 1.0f, -1.0f,  1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f,  0.0f,  1.0f,}, {1.0f, 0.0f} }, // bottom-right
+		{ { 1.0f,  1.0f,  1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f,  0.0f,  1.0f,}, {1.0f, 1.0f} }, // top-right
+		{ { 1.0f,  1.0f,  1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f,  0.0f,  1.0f,}, {1.0f, 1.0f} }, // top-right
+		{ {-1.0f,  1.0f,  1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f,  0.0f,  1.0f,}, {0.0f, 1.0f} }, // top-left
+		{ {-1.0f, -1.0f,  1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f,  0.0f,  1.0f,}, {0.0f, 0.0f} }, // bottom-left
+		// Left face
+		{ {-1.0f,  1.0f,  1.0f,}, {1.0f, 1.0f, 1.0f}, {-1.0f,  0.0f,  0.0f,}, {1.0f, 0.0f} }, // top-right
+		{ {-1.0f,  1.0f, -1.0f,}, {1.0f, 1.0f, 1.0f}, {-1.0f,  0.0f,  0.0f,}, {1.0f, 1.0f} }, // top-left
+		{ {-1.0f, -1.0f, -1.0f,}, {1.0f, 1.0f, 1.0f}, {-1.0f,  0.0f,  0.0f,}, {0.0f, 1.0f} }, // bottom-left
+		{ {-1.0f, -1.0f, -1.0f,}, {1.0f, 1.0f, 1.0f}, {-1.0f,  0.0f,  0.0f,}, {0.0f, 1.0f} }, // bottom-left
+		{ {-1.0f, -1.0f,  1.0f,}, {1.0f, 1.0f, 1.0f}, {-1.0f,  0.0f,  0.0f,}, {0.0f, 0.0f} }, // bottom-right
+		{ {-1.0f,  1.0f,  1.0f,}, {1.0f, 1.0f, 1.0f}, {-1.0f,  0.0f,  0.0f,}, {1.0f, 0.0f} }, // top-right
+		// Right face
+		{ { 1.0f,  1.0f,  1.0f,}, {1.0f, 1.0f, 1.0f}, { 1.0f,  0.0f,  0.0f,}, {1.0f, 0.0f} }, // top-left
+		{ { 1.0f, -1.0f, -1.0f,}, {1.0f, 1.0f, 1.0f}, { 1.0f,  0.0f,  0.0f,}, {0.0f, 1.0f} }, // bottom-right
+		{ { 1.0f,  1.0f, -1.0f,}, {1.0f, 1.0f, 1.0f}, { 1.0f,  0.0f,  0.0f,}, {1.0f, 1.0f} }, // top-right
+		{ { 1.0f, -1.0f, -1.0f,}, {1.0f, 1.0f, 1.0f}, { 1.0f,  0.0f,  0.0f,}, {0.0f, 1.0f} }, // bottom-right
+		{ { 1.0f,  1.0f,  1.0f,}, {1.0f, 1.0f, 1.0f}, { 1.0f,  0.0f,  0.0f,}, {1.0f, 0.0f} }, // top-left
+		{ { 1.0f, -1.0f,  1.0f,}, {1.0f, 1.0f, 1.0f}, { 1.0f,  0.0f,  0.0f,}, {0.0f, 0.0f} }, // bottom-left
+		// Bottom face
+		{ {-1.0f, -1.0f, -1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f, -1.0f,  0.0f,}, {0.0f, 1.0f} }, // top-right
+		{ { 1.0f, -1.0f, -1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f, -1.0f,  0.0f,}, {1.0f, 1.0f} }, // top-left
+		{ { 1.0f, -1.0f,  1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f, -1.0f,  0.0f,}, {1.0f, 0.0f} }, // bottom-left
+		{ { 1.0f, -1.0f,  1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f, -1.0f,  0.0f,}, {1.0f, 0.0f} }, // bottom-left
+		{ {-1.0f, -1.0f,  1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f, -1.0f,  0.0f,}, {0.0f, 0.0f} }, // bottom-right
+		{ {-1.0f, -1.0f, -1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f, -1.0f,  0.0f,}, {0.0f, 1.0f} }, // top-right
+		// Top face
+		{ {-1.0f,  1.0f, -1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f,  1.0f,  0.0f,}, {0.0f, 1.0f} }, // top-left
+		{ { 1.0f,  1.0f , 1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f,  1.0f,  0.0f,}, {1.0f, 0.0f} }, // bottom-right
+		{ { 1.0f,  1.0f, -1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f,  1.0f,  0.0f,}, {1.0f, 1.0f} }, // top-right
+		{ { 1.0f,  1.0f,  1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f,  1.0f,  0.0f,}, {1.0f, 0.0f} }, // bottom-right
+		{ {-1.0f,  1.0f, -1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f,  1.0f,  0.0f,}, {0.0f, 1.0f} }, // top-left
+		{ {-1.0f,  1.0f,  1.0f,}, {1.0f, 1.0f, 1.0f}, { 0.0f,  1.0f,  0.0f,}, {0.0f, 0.0f} }  // bottom-left
+	};
+}
+
+#pragma endregion
+
+#pragma region SphereShape
+
+SphereShape::SphereShape()
+{
+	std::vector<MeshVertex> vertices;
+	std::vector<uint16_t> indices;
+
+	constexpr unsigned int X_SEGMENTS = 64;
+	constexpr unsigned int Y_SEGMENTS = 64;
+	const float PI = glm::pi<float>();
+	for (unsigned int x = 0; x <= X_SEGMENTS; ++x)
+	{
+		for (unsigned int y = 0; y <= Y_SEGMENTS; ++y)
+		{
+			float xSegment = (float)x / (float)X_SEGMENTS;
+			float ySegment = (float)y / (float)Y_SEGMENTS;
+			float xPos = std::cos(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
+			float yPos = std::cos(ySegment * PI);
+			float zPos = std::sin(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
+
+			MeshVertex vertex;
+			vertex.position = glm::vec3(xPos, yPos, zPos);
+			vertex.color = glm::vec3(1.0f, 1.0f, 1.0f);
+			vertex.normal = glm::vec3(xPos, yPos, zPos);
+			vertex.texCoords = glm::vec2(xSegment, ySegment);
+			vertex.tangent = glm::vec3(0.0f); // TODO: исправить правильный tangent
+			vertices.emplace_back(vertex);
+		}
+	}
+
+	bool oddRow = false;
+	for (unsigned int y = 0; y < Y_SEGMENTS; ++y)
+	{
+		if (!oddRow) // even rows: y == 0, y == 2; and so on
+		{
+			for (unsigned int x = 0; x <= X_SEGMENTS; ++x)
+			{
+				indices.push_back(y * (X_SEGMENTS + 1) + x);
+				indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
+			}
+		}
+		else
+		{
+			for (int x = X_SEGMENTS; x >= 0; --x)
+			{
+				indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
+				indices.push_back(y * (X_SEGMENTS + 1) + x);
+			}
+		}
+		oddRow = !oddRow;
+	}
+
+	m_vao = std::make_shared<GLVertexArray>(vertices, indices, GetMeshVertexFormat());
+}
+
+void SphereShape::Draw()
+{
+	m_vao->DrawTriangles();
+}
+
+#pragma endregion
+
 #pragma region Camera
 
 void Camera::SetPosition(const glm::vec3& pos)

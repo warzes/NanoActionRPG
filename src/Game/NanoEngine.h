@@ -538,6 +538,30 @@ private:
 };
 using QuadShapeRef = std::shared_ptr<QuadShape>;
 
+class CubeShape final
+{
+public:
+	CubeShape();
+
+	void Draw();
+private:
+	std::vector<MeshVertex> getData();
+	GLVertexArrayRef m_vao;
+};
+using CubeShapeRef = std::shared_ptr<CubeShape>;
+
+class SphereShape final
+{
+public:
+	SphereShape();
+
+	void Draw();
+private:
+	GLVertexArrayRef m_vao;
+};
+using SphereShapeRef = std::shared_ptr<SphereShape>;
+
+
 class Camera final
 {
 	// TODO: правостороняя система координат работает неправильно, надо переделать под нее
