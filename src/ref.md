@@ -1,6 +1,9 @@
 ﻿https://www.youtube.com/@justice2free/videos
 	моделирование
 
+https://www.youtube.com/watch?v=K2rs7K4y_sY - Screen Space Reflections
+
+
 
 https://github.com/azer89/SimpleOpenGL
 https://github.com/KTStephano/StratusGFX

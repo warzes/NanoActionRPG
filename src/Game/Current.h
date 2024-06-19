@@ -93,11 +93,12 @@ void Example00X()
 
 	SceneLight globalLight(glm::vec3(-2.5f, 5.0f, -1.25f), glm::vec3(1.0f, 1.0f, 1.0f), 0.125f);
 
-	UtilsExample::SimpleShadowMapPass simpleShadowMapFB;
-	simpleShadowMapFB.Create(UtilsExample::SHADOW_WIDTH, UtilsExample::SHADOW_HEIGHT);
+	UtilsExample::ShadowPass simpleShadowMapFB;
+	simpleShadowMapFB.Create(SHADOW_WIDTH, SHADOW_HEIGHT);
 
 
 	UtilsExample::GBufferRef gbuffer{ new UtilsExample::GBuffer(Window::GetWidth(), Window::GetHeight()) };
+
 		
 	// TODO: объединить в один шейдер, так как в разделении нет смысла
 	UtilsExample::CoreLightingPassFB lightingPassFB;
@@ -201,6 +202,7 @@ void Example00X()
 		glEnable(GL_DEPTH_TEST);
 
 		// 1. render depth of scene to texture (from light's perspective)
+		// TODO: для каждого глобального (прямого) источника света генерить свою карту теней
 		glm::mat4 lightProjection, lightView;
 		glm::mat4 lightSpaceMatrix;
 		{
@@ -208,7 +210,10 @@ void Example00X()
 
 			if (enableShadows) 
 			{
-				lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 10.0f);
+				glDisable(GL_BLEND);
+				glEnable(GL_DEPTH_TEST);
+
+				lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
 				lightView = glm::lookAt(globalLight.position, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
 				lightSpaceMatrix = lightProjection * lightView;
 				// render scene from light's point of view
@@ -227,17 +232,17 @@ void Example00X()
 
 					modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.65f, 0.0f));
 					modelScale = glm::scale(modelTranslate, glm::vec3(10.0f));
-					gbuffer->GetProgram()->SetVertexUniform(1, modelScale);
+					simpleShadowMapFB.program->SetVertexUniform(1, modelScale);
 					quad->Draw();
 
 					modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.0f, 0.0f));
 					modelScale = glm::scale(modelTranslate, glm::vec3(2.0f));
-					gbuffer->GetProgram()->SetVertexUniform(1, modelScale);
+					simpleShadowMapFB.program->SetVertexUniform(1, modelScale);
 					cube->Draw();
 
 					modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(-6.0f, 0.0f, 0.0f));
 					modelScale = glm::scale(modelTranslate, glm::vec3(1.5f));
-					gbuffer->GetProgram()->SetVertexUniform(1, modelScale);
+					simpleShadowMapFB.program->SetVertexUniform(1, modelScale);
 					sphere->Draw();
 				}
 			}
@@ -252,6 +257,7 @@ void Example00X()
 			gbuffer->GetProgram()->SetVertexUniform(0, perspective);
 			gbuffer->GetProgram()->SetVertexUniform(1, camera.GetViewMatrix());
 			gbuffer->GetProgram()->SetVertexUniform(2, glm::mat4(1.0f));
+
 			glm::vec4 sponzaSpecular = glm::vec4(0.5f, 0.5f, 0.5f, 0.8f);
 			gbuffer->GetProgram()->SetFragmentUniform(0, sponzaSpecular);
 			model->Draw(gbuffer->GetProgram());
@@ -279,10 +285,13 @@ void Example00X()
 			sphere->Draw();
 		}
 
-		// TODO: объединить в один шейдер, так как в разделении нет смысла
 		// 3. lighting pass: calculate lighting by iterating over a screen filled quad pixel-by-pixel using the gbuffer's content and shadow map
 		//if (gBufferMode == 0) // если цифра, то дебажный режим для вывода выбранной текстуры из gbuffer
 		{
+			glEnable(GL_BLEND);
+			glDisable(GL_DEPTH_TEST);
+			glDepthMask(GL_FALSE);
+
 			lightingPassFB.Bind();
 
 			lightingPassFB.program->SetFragmentUniform(0, lightSpaceMatrix);
@@ -304,13 +313,12 @@ void Example00X()
 		//	// отрисовка буферов из gbuffer
 		//}
 
-		// TODO: объединить в один шейдер, так как в разделении нет смысла
 		// 3.5 lighting pass: render point lights on top of main scene with additive blending and utilizing G-Buffer for lighting.
 		//if (gBufferMode == 0)
 		{
 			glEnable(GL_CULL_FACE);
 			glFrontFace(GL_CW); // TODO: чтобы не рисовало сзади?
-			glDisable(GL_DEPTH_TEST);
+			//glDisable(GL_DEPTH_TEST);
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_ONE, GL_ONE);
 
@@ -333,11 +341,11 @@ void Example00X()
 			sphereVao->Bind();
 			glDrawElementsInstanced(GL_TRIANGLES, 2280, GL_UNSIGNED_INT, 0, totalLights);
 
-			glDisable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			glFrontFace(GL_CCW);
 			glDisable(GL_BLEND);
 			glDisable(GL_CULL_FACE);
+			glDepthMask(GL_TRUE);
 		}
 
 		// Main frame
@@ -348,6 +356,10 @@ void Example00X()
 				0, 0, Window::GetWidth(), Window::GetHeight(),
 				0, 0, Window::GetWidth(), Window::GetHeight(),
 				GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+
+
+
 		}
 
 		IMGUI::Draw();

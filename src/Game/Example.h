@@ -1,10 +1,10 @@
 #pragma once
 
+const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
+
 namespace UtilsExample
 {
-	const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
-
-	class SimpleShadowMapPass final
+	class ShadowPass final
 	{
 	public:
 		void Create(int width, int height)
@@ -26,6 +26,7 @@ layout (location = 0) in vec3 aPosition;
 
 // --------- Output Variables ---------
 out gl_PerVertex { vec4 gl_Position; };
+out vec4 position;
 
 // ------------- Uniform --------------
 layout (location = 0) uniform mat4 uLightSpaceMatrix;
@@ -34,6 +35,7 @@ layout (location = 1) uniform mat4 uWorldMatrix;
 void main()
 {	
 	gl_Position = uLightSpaceMatrix * uWorldMatrix * vec4(aPosition, 1.0);
+	position = gl_Position;
 }
 )";
 #pragma endregion
@@ -42,9 +44,13 @@ void main()
 			const char* fragSource = R"(
 #version 460 core
 
+in vec4 position;
+
+layout(location = 0) out vec4 fragColor;
+
 void main()
 {
-	//gl_FragDepth = gl_FragCoord.z;
+	fragColor = vec4(position.w, position.w, position.w, position.w);
 }
 )";
 #pragma endregion
@@ -260,6 +266,7 @@ void main()
 		return m_program;
 	}
 
+	// TODO: объединить в один класс - LightingPass
 	class CoreLightingPassFB
 	{
 	public:
@@ -443,7 +450,6 @@ void main()
 		int width = 0;
 		int height = 0;
 	};
-
 	class PointsLightingPassFB
 	{
 	public:
