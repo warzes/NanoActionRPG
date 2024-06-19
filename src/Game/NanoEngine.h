@@ -561,28 +561,55 @@ private:
 };
 using SphereShapeRef = std::shared_ptr<SphereShape>;
 
+constexpr auto CAMERA_UP = glm::vec3(0.0f, 1.0f, 0.0f);
+#ifdef GLM_FORCE_LEFT_HANDED
+constexpr auto CAMERA_FRONT = glm::vec3(0.0f, 0.0f, 1.0f);
+#else
+constexpr auto CAMERA_FRONT = glm::vec3(0.0f, 0.0f, -1.0f);
+#endif
+constexpr auto CAMERA_RIGHT = glm::vec3(1.0f, 0.0f, 0.0f);
+constexpr float CAMERA_YAW = -90.0f;
+constexpr float CAMERA_PITCH = 0.0f;
+constexpr float CAMERA_SPEED = 10.0f;
+constexpr float CAMERA_SENSITIVITY = 0.1f;
 
 class Camera final
 {
-	// TODO: правостороняя система координат работает неправильно, надо переделать под нее
 public:
-	void SetPosition(const glm::vec3& pos);
-	void SetPosition(const glm::vec3& pos, const glm::vec3& forwardLook);
-	void MoveBy(float distance); // move front/back
-	void StrafeBy(float distance); // move left/right
-	void RotateLeftRight(float angleInDegrees); // rotate left/right
-	void RotateUpDown(float angleInDegrees); // rotate up/down
+	enum MovementDir
+	{
+		Forward,
+		Backward,
+		Left,
+		Right
+	};
 
-	glm::vec3 GetNormalizedViewVector() const;
-	glm::mat4 GetViewMatrix() const;
+	void Set(
+		glm::vec3 position = glm::vec3(0.0f),
+		glm::vec3 up = CAMERA_UP,
+		float yaw = CAMERA_YAW,
+		float pitch = CAMERA_PITCH);
 
-	glm::vec3 GetForward() const;
-	glm::vec3 GetRight() const;
-	glm::vec3 GetUp() const;
+	void Move(MovementDir direction, float deltaTime);
+	void Rotate(float xOffset, float yOffset); // TODO: дельтатайм нужна?
+
+	[[nodiscard]] const glm::mat4& GetViewMatrix() const;
 
 	glm::vec3 position = glm::vec3(0.0f);
-	glm::vec3 target = glm::vec3(0.0f, 0.0f, 1.0f);
-	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+	glm::vec3 front = CAMERA_FRONT;
+	glm::vec3 up = CAMERA_UP;
+	glm::vec3 right = CAMERA_RIGHT;
+	glm::vec3 worldUp = CAMERA_UP;
+
+	float yaw = CAMERA_YAW;
+	float pitch = CAMERA_PITCH;
+
+	float movementSpeed = CAMERA_SPEED;
+	float mouseSensitivity = CAMERA_SENSITIVITY;
+
+private:
+	void update();
+	glm::mat4 m_view;
 };
 
 #pragma endregion

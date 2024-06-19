@@ -804,7 +804,7 @@ void main()
 	glm::ivec2 lastMousePosition = Mouse::GetPosition();
 
 	Camera camera;
-	camera.SetPosition({ 0.0f, 0.3f, -1.0f });
+	camera.Set({ 0.0f, 0.3f, -1.0f });
 
 	glEnable(GL_DEPTH_TEST);
 
@@ -832,25 +832,19 @@ void main()
 
 		// Update
 		{
-			const float mouseSensitivity = 10.0f * deltaTime;
-			const float moveSpeed = 10.0f * deltaTime;
-			const glm::vec3 oldCameraPos = camera.position;
+			glm::ivec2 mousePosition = Mouse::GetPosition();
+			auto change = mousePosition - lastMousePosition;
+			lastMousePosition = mousePosition;
 
-			auto change = Mouse::GetPosition() - lastMousePosition;
-
-			if (Keyboard::IsPressed(GLFW_KEY_W)) camera.MoveBy(moveSpeed);
-			if (Keyboard::IsPressed(GLFW_KEY_S)) camera.MoveBy(-moveSpeed);
-			if (Keyboard::IsPressed(GLFW_KEY_A)) camera.StrafeBy(moveSpeed);
-			if (Keyboard::IsPressed(GLFW_KEY_D)) camera.StrafeBy(-moveSpeed);
+			if (Keyboard::IsPressed(GLFW_KEY_W)) camera.Move(Camera::Forward, deltaTime);
+			if (Keyboard::IsPressed(GLFW_KEY_S)) camera.Move(Camera::Backward, deltaTime);
+			if (Keyboard::IsPressed(GLFW_KEY_A)) camera.Move(Camera::Left, deltaTime);
+			if (Keyboard::IsPressed(GLFW_KEY_D)) camera.Move(Camera::Right, deltaTime);
 
 			if (Mouse::IsPressed(Mouse::Button::Right))
 			{
 				Mouse::SetCursorMode(Mouse::CursorMode::Disabled);
-
-				lastMousePosition = Mouse::GetPosition();
-
-				if (change.x != 0.0f)  camera.RotateLeftRight(change.x * mouseSensitivity);
-				if (change.y != 0.0f)  camera.RotateUpDown(-change.y * mouseSensitivity);
+				if (change.x != 0.0f || change.y != 0.0f) camera.Rotate(change.x, -change.y);
 			}
 			else
 			{
@@ -971,7 +965,7 @@ void main()
 	glm::ivec2 lastMousePosition = Mouse::GetPosition();
 
 	Camera camera;
-	camera.SetPosition({ 0.0f, 0.3f, -1.0f });
+	camera.Set({ 0.0f, 0.3f, -1.0f });
 
 	glEnable(GL_DEPTH_TEST);
 
@@ -997,25 +991,19 @@ void main()
 
 		// Update
 		{
-			const float mouseSensitivity = 100.0f * deltaTime;
-			const float moveSpeed = 10.0f * deltaTime;
-			const glm::vec3 oldCameraPos = camera.position;
+			glm::ivec2 mousePosition = Mouse::GetPosition();
+			auto change = mousePosition - lastMousePosition;
+			lastMousePosition = mousePosition;
 
-			auto change = Mouse::GetPosition() - lastMousePosition;
-
-			if (Keyboard::IsPressed(GLFW_KEY_W)) camera.MoveBy(moveSpeed);
-			if (Keyboard::IsPressed(GLFW_KEY_S)) camera.MoveBy(-moveSpeed);
-			if (Keyboard::IsPressed(GLFW_KEY_A)) camera.StrafeBy(moveSpeed);
-			if (Keyboard::IsPressed(GLFW_KEY_D)) camera.StrafeBy(-moveSpeed);
+			if (Keyboard::IsPressed(GLFW_KEY_W)) camera.Move(Camera::Forward, deltaTime);
+			if (Keyboard::IsPressed(GLFW_KEY_S)) camera.Move(Camera::Backward, deltaTime);
+			if (Keyboard::IsPressed(GLFW_KEY_A)) camera.Move(Camera::Left, deltaTime);
+			if (Keyboard::IsPressed(GLFW_KEY_D)) camera.Move(Camera::Right, deltaTime);
 
 			if (Mouse::IsPressed(Mouse::Button::Right))
 			{
 				Mouse::SetCursorMode(Mouse::CursorMode::Disabled);
-
-				lastMousePosition = Mouse::GetPosition();
-
-				if (change.x != 0.0f)  camera.RotateLeftRight(change.x * mouseSensitivity);
-				if (change.y != 0.0f)  camera.RotateUpDown(-change.y * mouseSensitivity);
+				if (change.x != 0.0f || change.y != 0.0f) camera.Rotate(change.x, -change.y);
 			}
 			else
 			{
@@ -1074,7 +1062,7 @@ void Example003()
 	glm::ivec2 lastMousePosition = Mouse::GetPosition();
 
 	Camera camera;
-	camera.SetPosition({ 0.0f, 0.3f, -1.0f });
+	camera.Set({ 0.0f, 0.3f, -1.0f });
 
 	UtilsExample::GBufferRef gbuffer{ new UtilsExample::GBuffer(Window::GetWidth(), Window::GetHeight()) };
 	
@@ -1138,25 +1126,19 @@ void Example003()
 
 		// Update
 		{
-			const float mouseSensitivity = 100.0f * deltaTime;
-			const float moveSpeed = 10.0f * deltaTime;
-			const glm::vec3 oldCameraPos = camera.position;
+			glm::ivec2 mousePosition = Mouse::GetPosition();
+			auto change = mousePosition - lastMousePosition;
+			lastMousePosition = mousePosition;
 
-			auto change = Mouse::GetPosition() - lastMousePosition;
-
-			if (Keyboard::IsPressed(GLFW_KEY_W)) camera.MoveBy(moveSpeed);
-			if (Keyboard::IsPressed(GLFW_KEY_S)) camera.MoveBy(-moveSpeed);
-			if (Keyboard::IsPressed(GLFW_KEY_A)) camera.StrafeBy(moveSpeed);
-			if (Keyboard::IsPressed(GLFW_KEY_D)) camera.StrafeBy(-moveSpeed);
+			if (Keyboard::IsPressed(GLFW_KEY_W)) camera.Move(Camera::Forward, deltaTime);
+			if (Keyboard::IsPressed(GLFW_KEY_S)) camera.Move(Camera::Backward, deltaTime);
+			if (Keyboard::IsPressed(GLFW_KEY_A)) camera.Move(Camera::Left, deltaTime);
+			if (Keyboard::IsPressed(GLFW_KEY_D)) camera.Move(Camera::Right, deltaTime);
 
 			if (Mouse::IsPressed(Mouse::Button::Right))
 			{
 				Mouse::SetCursorMode(Mouse::CursorMode::Disabled);
-
-				lastMousePosition = Mouse::GetPosition();
-
-				if (change.x != 0.0f)  camera.RotateLeftRight(change.x * mouseSensitivity);
-				if (change.y != 0.0f)  camera.RotateUpDown(-change.y * mouseSensitivity);
+				if (change.x != 0.0f || change.y != 0.0f) camera.Rotate(change.x, -change.y);
 			}
 			else
 			{

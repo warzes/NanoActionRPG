@@ -3,6 +3,7 @@
 
 
 https://github.com/azer89/SimpleOpenGL
+https://github.com/KTStephano/StratusGFX
 
 
 https://github.com/timurson/DeferredShading

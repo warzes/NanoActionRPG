@@ -1188,102 +1188,61 @@ void SphereShape::Draw()
 
 #pragma region Camera
 
-void Camera::SetPosition(const glm::vec3& pos)
+void Camera::Set(glm::vec3 Position, glm::vec3 Up, float Yaw, float Pitch)
 {
-	const glm::vec3 oldTarget = GetNormalizedViewVector();
-	position = pos;
-	target = pos + oldTarget;
+	position = Position;
+	front = CAMERA_FRONT;
+	up = CAMERA_UP;
+	right = CAMERA_RIGHT;
+	worldUp = Up;
+	yaw = Yaw;
+	pitch = Pitch;
+	update();
 }
 
-void Camera::SetPosition(const glm::vec3& pos, const glm::vec3& forwardLook)
+void Camera::Move(MovementDir direction, float deltaTime)
 {
-	position = pos;
-	target = pos + forwardLook;
+	const float velocity = movementSpeed * deltaTime;
+	if (direction == Forward) position += front * velocity;
+	else if (direction == Backward) position -= front * velocity;
+	else if (direction == Left) position -= right * velocity;
+	else if (direction == Right) position += right * velocity;
+	update();
 }
 
-void Camera::MoveBy(float distance)
+void Camera::Rotate(float xOffset, float yOffset)
 {
-	const glm::vec3 vOffset = GetNormalizedViewVector() * distance;
-	position += vOffset;
-	target += vOffset;
+	xOffset *= mouseSensitivity;
+	yOffset *= mouseSensitivity;
+
+	yaw += xOffset;
+	pitch += yOffset;
+
+	if (pitch > 89.0f) pitch = 89.0f;
+	else if (pitch < -89.0f) pitch = -89.0f;
+	update();
 }
 
-void Camera::StrafeBy(float distance)
+const glm::mat4& Camera::GetViewMatrix() const
 {
-#if !defined(GLM_FORCE_LEFT_HANDED)
-	distance = -distance;
-#endif
-	const glm::vec3 strafeVector = glm::normalize(glm::cross(GetNormalizedViewVector(), up)) * distance;
-	position += strafeVector;
-	target += strafeVector;
+	return m_view;
 }
 
-void Camera::RotateLeftRight(float angleInDegrees)
+void Camera::update()
 {
-#if !defined(GLM_FORCE_LEFT_HANDED)
-	angleInDegrees = -angleInDegrees;
-#endif
-	const glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(angleInDegrees), glm::vec3(0.0f, 1.0f, 0.0f)); // TODO: а может Up?
+	front = glm::normalize(
+		glm::vec3
+		(
+			cos(glm::radians(yaw)) * cos(glm::radians(pitch)), // x
+			sin(glm::radians(pitch)), // y
+			sin(glm::radians(yaw)) * cos(glm::radians(pitch)) // z
+		)
+	);
 
-	const glm::vec4 rotatedViewVector = rotationMatrix * glm::vec4(GetNormalizedViewVector(), 0.0f);
-	target = position + glm::vec3(rotatedViewVector);
-}
+	right = glm::normalize(glm::cross(front, worldUp));
+	up = glm::normalize(glm::cross(right, front));
 
-void Camera::RotateUpDown(float angleInDegrees)
-{
-	const glm::vec3 viewVector = GetNormalizedViewVector();
-	const glm::vec3 viewVectorNoY = glm::normalize(glm::vec3(viewVector.x, 0.0f, viewVector.z));
-
-	float currentAngleDegrees = glm::degrees(acos(glm::dot(viewVectorNoY, viewVector)));
-	if (viewVector.y < 0.0f) currentAngleDegrees = -currentAngleDegrees;
-
-	const float newAngleDegrees = currentAngleDegrees + angleInDegrees;
-	if (newAngleDegrees > -85.0f && newAngleDegrees < 85.0f)
-	{
-		glm::vec3 rotationAxis = glm::cross(GetNormalizedViewVector(), up);
-		rotationAxis = glm::normalize(rotationAxis);
-
-		const glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(angleInDegrees), rotationAxis);
-		const glm::vec4 rotatedViewVector = rotationMatrix * glm::vec4(GetNormalizedViewVector(), 0.0f);
-
-		target = position + glm::vec3(rotatedViewVector);
-	}
-}
-
-glm::vec3 Camera::GetNormalizedViewVector() const
-{
-	return glm::normalize(target - position);
-}
-
-glm::mat4 Camera::GetViewMatrix() const
-{
-	return glm::lookAt(position, target, up);
-}
-
-glm::vec3 Camera::GetForward() const
-{
-	return GetNormalizedViewVector();
-}
-
-glm::vec3 Camera::GetRight() const
-{
-	glm::vec3 forwardVector = GetForward();
-#ifndef GLM_FORCE_LEFT_HANDED
-	return glm::normalize(glm::cross(forwardVector, up));
-#else
-	return glm::normalize(glm::cross(up, forwardVector));
-#endif
-}
-
-glm::vec3 Camera::GetUp() const
-{
-	glm::vec3 forwardVector = GetForward();
-	glm::vec3 rightVector = GetRight();
-#ifndef GLM_FORCE_LEFT_HANDED
-	return glm::normalize(glm::cross(rightVector, forwardVector));
-#else
-	return glm::normalize(glm::cross(forwardVector, rightVector));
-#endif
+	m_view = glm::lookAt(position, position + front, up);
 }
 
 #pragma endregion
