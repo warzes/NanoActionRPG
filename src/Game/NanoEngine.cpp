@@ -42,6 +42,13 @@ namespace
 
 	struct
 	{
+		glm::ivec2 position;
+		glm::ivec2 lastPosition;
+		glm::ivec2 delta;
+	} MouseState;
+
+	struct
+	{
 		ImFont* defaultFont = nullptr;
 	} imgui;
 }
@@ -49,6 +56,7 @@ namespace
 void ResetGlobalVars()
 {
 	Engine.IsEnd = false;
+
 }
 #pragma endregion
 
@@ -1274,6 +1282,11 @@ void Camera::update()
 //==============================================================================
 #pragma region Window
 
+void mouseCallback(GLFWwindow* /*window*/, double xPosIn, double yPosIn) noexcept
+{
+	MouseState.position = glm::ivec2{ xPosIn,yPosIn };
+}
+
 bool Window::Create(const char* title, int width, int height)
 {
 	glfwInit();
@@ -1294,7 +1307,11 @@ bool Window::Create(const char* title, int width, int height)
 	glfwSetInputMode(Engine.window, GLFW_STICKY_KEYS, GLFW_TRUE); // сохраняет событие клавиши до его опроса через glfwGetKey()
 	glfwSetInputMode(Engine.window, GLFW_STICKY_MOUSE_BUTTONS, GLFW_TRUE); // сохраняет событие кнопки мыши до его опроса через glfwGetMouseButton()
 
+	glfwSetCursorPosCallback(Engine.window, mouseCallback);
+
 	gladLoadGL(glfwGetProcAddress);
+
+	MouseState.lastPosition = MouseState.position = Mouse::GetPosition();
 
 	return true;
 }
@@ -1324,6 +1341,9 @@ void Window::Update()
 
 	Engine.windowWidth = std::max(width, 1);
 	Engine.windowHeight = std::max(height, 1);
+
+	MouseState.delta = MouseState.position - MouseState.lastPosition;
+	MouseState.lastPosition = MouseState.position;
 }
 
 void Window::Swap()
@@ -1370,9 +1390,15 @@ bool Mouse::IsPressed(Button button)
 
 glm::ivec2 Mouse::GetPosition()
 {
-	double xpos, ypos;
-	glfwGetCursorPos(Engine.window, &xpos, &ypos);
-	return { xpos, ypos };
+	//double xpos, ypos;
+	//glfwGetCursorPos(Engine.window, &xpos, &ypos);
+	//return { xpos, ypos };
+	return MouseState.position;
+}
+
+glm::ivec2 Mouse::GetDelta()
+{
+	return MouseState.delta;
 }
 
 void Mouse::SetPosition(const glm::ivec2& position)

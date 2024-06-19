@@ -54,12 +54,10 @@ void Example00X()
 	Renderer::Init();
 	IMGUI::Init();
 
-	int timeBeg = clock();
+	float lastFrameTime = static_cast<float>(glfwGetTime());
 
 	glm::mat4 perspective = glm::perspective(glm::radians(60.0f), (float)Window::GetWidth() / (float)Window::GetHeight(), 0.1f, 1000.f);
 	glViewport(0, 0, Window::GetWidth(), Window::GetHeight());
-
-	glm::ivec2 lastMousePosition = Mouse::GetPosition();
 
 	Camera camera;
 	camera.Set({ 0.0f, 0.3f, -1.0f });
@@ -106,7 +104,6 @@ void Example00X()
 
 	UtilsExample::PointsLightingPassFB pointsLightingPassFB;
 	pointsLightingPassFB.Create(Window::GetWidth(), Window::GetHeight());
-
 
 	GLVertexArrayRef VAOEmpty{ new GLVertexArray };
 
@@ -155,9 +152,9 @@ void Example00X()
 	while (!Window::ShouldClose())
 	{
 #pragma region deltatime
-		int timeEnd = clock();
-		float deltaTime = float(timeEnd - timeBeg) / 1000.f;
-		timeBeg = clock();
+		float currentFrame = static_cast<float>(glfwGetTime());
+		float deltaTime = currentFrame - lastFrameTime;
+		lastFrameTime = currentFrame;
 #pragma endregion
 
 		Window::Update();
@@ -173,9 +170,7 @@ void Example00X()
 
 		// Update
 		{
-			glm::ivec2 mousePosition = Mouse::GetPosition();
-			auto change = mousePosition - lastMousePosition;
-			lastMousePosition = mousePosition;
+			auto change = Mouse::GetDelta();
 
 			if (Keyboard::IsPressed(GLFW_KEY_W)) camera.Move(Camera::Forward, deltaTime);
 			if (Keyboard::IsPressed(GLFW_KEY_S)) camera.Move(Camera::Backward, deltaTime);
