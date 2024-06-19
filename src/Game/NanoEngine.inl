@@ -156,26 +156,41 @@ template<typename T>
 inline GLBuffer::GLBuffer(const std::vector<T>& buff, GLenum flags)
 {
 	createHandle();
-	glNamedBufferStorage(m_handle, sizeof(typename std::vector<T>::value_type) * buff.size(), buff.data(), flags);
+	m_elementSize = sizeof(typename std::vector<T>::value_type);
+	m_elementCount = buff.size();
+	glNamedBufferStorage(m_handle, m_elementSize * m_elementCount, buff.data(), flags);
 }
 
 template<typename T>
 inline void GLBuffer::SetData(const std::vector<T>& buff, GLenum usage)
 {
-	glNamedBufferData(m_handle, sizeof(typename std::vector<T>::value_type) * buff.size(), buff.data(), usage);
+	m_elementSize = sizeof(typename std::vector<T>::value_type);
+	m_elementCount = buff.size();
+	glNamedBufferData(m_handle, m_elementSize * m_elementCount, buff.data(), usage);
 }
 
 template<typename T>
 inline void GLBuffer::SetSubData(GLintptr offset, const std::vector<T>& buff)
 {
-	glNamedBufferSubData(m_handle, offset, sizeof(typename std::vector<T>::value_type) * buff.size(), buff.data());
+	m_elementSize = sizeof(typename std::vector<T>::value_type);
+	m_elementCount = buff.size();
+	glNamedBufferSubData(m_handle, offset, m_elementSize * m_elementCount, buff.data());
+}
+
+template<typename T>
+inline GLVertexArray::GLVertexArray(const std::vector<T>& vertices, const std::vector<AttribFormat>& attribFormats)
+	: GLVertexArray(
+		std::make_shared<GLBuffer>(vertices),
+		nullptr,
+		attribFormats)
+{
 }
 
 template<typename T>
 inline GLVertexArray::GLVertexArray(const std::vector<T>& vertices, const std::vector<uint8_t>& indices, const std::vector<AttribFormat>& attribFormats)
 	: GLVertexArray(
-		std::make_shared<GLBuffer>(vertices), sizeof(T),
-		std::make_shared<GLBuffer>(indices), indices.size(), IndexFormat::UInt8,
+		std::make_shared<GLBuffer>(vertices),
+		std::make_shared<GLBuffer>(indices),
 		attribFormats)
 {
 }
@@ -183,8 +198,8 @@ inline GLVertexArray::GLVertexArray(const std::vector<T>& vertices, const std::v
 template<typename T>
 inline GLVertexArray::GLVertexArray(const std::vector<T>& vertices, const std::vector<uint16_t>& indices, const std::vector<AttribFormat>& attribFormats)
 	: GLVertexArray(
-		std::make_shared<GLBuffer>(vertices), sizeof(T),
-		std::make_shared<GLBuffer>(indices), indices.size(), IndexFormat::UInt16,
+		std::make_shared<GLBuffer>(vertices),
+		std::make_shared<GLBuffer>(indices),
 		attribFormats)
 {
 }
@@ -192,8 +207,8 @@ inline GLVertexArray::GLVertexArray(const std::vector<T>& vertices, const std::v
 template<typename T>
 inline GLVertexArray::GLVertexArray(const std::vector<T>& vertices, const std::vector<uint32_t>& indices, const std::vector<AttribFormat>& attribFormats)
 	: GLVertexArray(
-		std::make_shared<GLBuffer>(vertices), sizeof(T),
-		std::make_shared<GLBuffer>(indices), indices.size(), IndexFormat::UInt32,
+		std::make_shared<GLBuffer>(vertices),
+		std::make_shared<GLBuffer>(indices),
 		attribFormats)
 {
 }

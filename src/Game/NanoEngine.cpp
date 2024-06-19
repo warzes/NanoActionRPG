@@ -355,18 +355,18 @@ GLVertexArray::GLVertexArray()
 	createHandle();
 }
 
-GLVertexArray::GLVertexArray(GLBufferRef vbo, size_t vertexSize, const std::vector<AttribFormat>& attribFormats)
-	: GLVertexArray(vbo, vertexSize, nullptr, 0, {}, attribFormats)
+GLVertexArray::GLVertexArray(GLBufferRef vbo, const std::vector<AttribFormat>& attribFormats)
+	: GLVertexArray(vbo, nullptr, attribFormats)
 {
 }
 
-GLVertexArray::GLVertexArray(GLBufferRef vbo, size_t vertexSize, GLBufferRef ibo, size_t indexNum, IndexFormat indexFormat, const std::vector<AttribFormat>& attribFormats)
+GLVertexArray::GLVertexArray(GLBufferRef vbo, GLBufferRef ibo, const std::vector<AttribFormat>& attribFormats)
 {
 	createHandle();
 	setAttribFormats(attribFormats);
 
-	if (::IsValid(vbo) && vertexSize) setVertexBuffer(vbo, vertexSize);
-	if (::IsValid(ibo)) setIndexBuffer(ibo, indexNum, indexFormat);
+	if (::IsValid(vbo)) setVertexBuffer(vbo);
+	if (::IsValid(ibo)) setIndexBuffer(ibo);
 }
 
 GLVertexArray::~GLVertexArray()
@@ -385,14 +385,13 @@ void GLVertexArray::DrawTriangles()
 
 	if (!m_ibo)
 	{
-		// TODO: рисование если нет индексного буфера
+		glDrawArrays(GL_TRIANGLES, 0, m_vbo->GetElementCount());
 	}
 	else
 	{
-		const GLenum type = (m_indexFormat == IndexFormat::UInt8 ? GL_UNSIGNED_BYTE
-			: (m_indexFormat == IndexFormat::UInt16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT));
-
-		glDrawElements(GL_TRIANGLES, m_indexNum, type, nullptr);
+		const GLenum type = (m_ibo->GetElementSize() == sizeof(uint8_t) ? GL_UNSIGNED_BYTE
+			: (m_ibo->GetElementSize() == sizeof(uint16_t) ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT));
+		glDrawElements(GL_TRIANGLES, m_ibo->GetElementCount(), type, nullptr);
 	}
 }
 
@@ -418,24 +417,21 @@ void GLVertexArray::setAttribFormats(const std::vector<AttribFormat>& attribForm
 	}
 }
 
-void GLVertexArray::setVertexBuffer(GLBufferRef vbo, size_t vertexSize)
+void GLVertexArray::setVertexBuffer(GLBufferRef vbo)
 {
-	setVertexBuffer(0, vbo, 0, vertexSize);
+	setVertexBuffer(0, vbo, 0, vbo->GetElementSize());
 }
 
 void GLVertexArray::setVertexBuffer(GLuint bindingIndex, GLBufferRef vbo, GLintptr offset, size_t stride)
 {
 	glVertexArrayVertexBuffer(m_handle, bindingIndex, *vbo, offset, (GLsizei)stride);
-	m_vertexSize = stride; // TODO; это правильно?
 	m_vbo = vbo;
 }
 
-void GLVertexArray::setIndexBuffer(GLBufferRef ibo, size_t indexNum, IndexFormat indexFormat)
+void GLVertexArray::setIndexBuffer(GLBufferRef ibo)
 {
 	glVertexArrayElementBuffer(m_handle, *ibo);
 	m_ibo = ibo;
-	m_indexFormat = indexFormat;
-	m_indexNum = indexNum;
 }
 
 #pragma endregion
@@ -455,14 +451,19 @@ GLTexture2D::GLTexture2D(GLenum internalFormat, GLenum format, GLenum dataType, 
 
 GLTexture2D::GLTexture2D(std::string_view filepath, int comp, bool generateMipMaps)
 {
-	if (!std::filesystem::exists(filepath.data()))
+	if (!std::filesystem::exists(filepath))
 	{
 		Error("File '" + std::string(filepath.data()) + "' does not exist.");
 		return;
 	}
 
 	int w, h, c;
-	const auto data = stbi_load(filepath.data(), &w, &h, &c, comp);
+	auto data = stbi_load(filepath.data(), &w, &h, &c, comp);
+	if (!data)
+	{
+		Error("File '" + std::string(filepath.data()) + "' does not load.");
+		return;
+	}
 
 	const auto [internalFormat, format] = STBImageToOpenGLFormat((comp));
 
@@ -495,31 +496,29 @@ void GLTexture2D::destroyHandle()
 
 void GLTexture2D::createTexture(GLenum internalFormat, GLenum format, GLenum dataType, GLsizei width, GLsizei height, void* data, GLint filter, GLint repeat, const glm::vec4& borderColor, bool generateMipMaps)
 {
+	const int maxAnisotropy = 16;
 	int levels = 1;
 	if (generateMipMaps)
-		levels = 1 + (int)std::floor(std::log2(std::min(width, height)));
+		levels = NumMipmap(width, height);
 
-	glTextureStorage2D(m_handle, levels, internalFormat, width, height);
-
+	GLint minFilter = filter;
 	if (generateMipMaps)
 	{
-		if (filter == GL_LINEAR)
-			glTextureParameteri(m_handle, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-		else if (filter == GL_NEAREST)
-			glTextureParameteri(m_handle, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
-		else
-			Fatal("Unsupported filter");
+		if (filter == GL_LINEAR) minFilter = GL_LINEAR_MIPMAP_LINEAR;
+		else if (filter == GL_NEAREST) minFilter = GL_NEAREST_MIPMAP_NEAREST;
+		else Fatal("Unsupported filter");
 	}
-	else
-		glTextureParameteri(m_handle, GL_TEXTURE_MIN_FILTER, filter);
 
+	glTextureParameteri(m_handle, GL_TEXTURE_MIN_FILTER, minFilter);
 	glTextureParameteri(m_handle, GL_TEXTURE_MAG_FILTER, filter);
-
 	glTextureParameteri(m_handle, GL_TEXTURE_WRAP_S, repeat);
 	glTextureParameteri(m_handle, GL_TEXTURE_WRAP_T, repeat);
 	glTextureParameteri(m_handle, GL_TEXTURE_WRAP_R, repeat);
-
 	glTextureParameterfv(m_handle, GL_TEXTURE_BORDER_COLOR, glm::value_ptr(borderColor));
+	glTextureParameteri(m_handle, GL_TEXTURE_MAX_LEVEL, levels - 1);
+	glTextureParameteri(m_handle, GL_TEXTURE_MAX_ANISOTROPY, maxAnisotropy);
+
+	glTextureStorage2D(m_handle, levels, internalFormat, width, height);
 
 	if (data)
 		glTextureSubImage2D(m_handle, 0, 0, 0, width, height, format, dataType, data);
@@ -1030,6 +1029,35 @@ void Model::computeAABB()
 // Scene
 //==============================================================================
 #pragma region Scene
+
+#pragma region QuadShape
+
+QuadShape::QuadShape()
+{
+	m_vao = std::make_shared<GLVertexArray>(getData(), GetMeshVertexFormat());
+}
+
+void QuadShape::Draw()
+{
+	m_vao->DrawTriangles();
+}
+
+std::vector<MeshVertex> QuadShape::getData()
+{
+	// TODO: указать правильный Tangent
+	return
+	{
+		// Positions            // Color            // Normals          // Texcoords  // Tangent
+		{ {1.0f,  0.0f,  1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}, {0.0f, 0.0f, 0.0f} },
+		{ {-1.0f, 0.0f,  1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} },
+		{ {-1.0f, 0.0f, -1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}, {0.0f, 0.0f, 0.0f} },
+		{ {1.0f,  0.0f,  1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}, {0.0f, 0.0f, 0.0f} },
+		{ {-1.0f, 0.0f, -1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}, {0.0f, 0.0f, 0.0f} },
+		{ {1.0f,  0.0f, -1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 0.0f} }
+	};
+}
+
+#pragma endregion
 
 #pragma region Camera
 

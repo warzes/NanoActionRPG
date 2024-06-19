@@ -49,42 +49,6 @@ void configurePointLights(std::vector<InstanceData>& modelData, float radius, fl
 	}
 }
 
-void configurePointLights(std::vector<glm::mat4>& modelMatrices, std::vector<glm::vec4>& modelColorSizes, float radius, float separation, float yOffset)
-{
-	srand(glfwGetTime());
-	// add some uniformly spaced point lights
-	for (unsigned int lightIndexX = 0; lightIndexX < LIGHT_GRID_WIDTH; lightIndexX++)
-	{
-		for (unsigned int lightIndexZ = 0; lightIndexZ < LIGHT_GRID_WIDTH; lightIndexZ++)
-		{
-			for (unsigned int lightIndexY = 0; lightIndexY < LIGHT_GRID_HEIGHT; lightIndexY++)
-			{
-				float diameter = 2.0f * radius;
-				float xPos = (lightIndexX - (LIGHT_GRID_WIDTH - 1.0f) / 2.0f) * (diameter * separation);
-				float zPos = (lightIndexZ - (LIGHT_GRID_WIDTH - 1.0f) / 2.0f) * (diameter * separation);
-				float yPos = (lightIndexY - (LIGHT_GRID_HEIGHT - 1.0f) / 2.0f) * (diameter * separation) + yOffset;
-				double angle = double(rand()) * 2.0 * M_PI / (double(RAND_MAX));
-				double length = double(rand()) * 0.5 / (double(RAND_MAX));
-				float xOffset = cos(angle) * length;
-				float zOffset = sin(angle) * length;
-				xPos += xOffset;
-				zPos += zOffset;
-				// also calculate random color
-				float rColor = ((rand() % 100) / 200.0f) + 0.5; // between 0.5 and 1.0
-				float gColor = ((rand() % 100) / 200.0f) + 0.5; // between 0.5 and 1.0
-				float bColor = ((rand() % 100) / 200.0f) + 0.5; // between 0.5 and 1.0
-
-				int curLight = lightIndexX * LIGHT_GRID_WIDTH * LIGHT_GRID_HEIGHT + lightIndexZ * LIGHT_GRID_HEIGHT + lightIndexY;
-				glm::mat4 model = glm::mat4(1.0f);
-				model = glm::translate(model, glm::vec3(xPos, yPos, zPos));
-				// now add to list of matrices
-				modelMatrices.emplace_back(model);
-				modelColorSizes.emplace_back(glm::vec4(rColor, gColor, bColor, radius));
-			}
-		}
-	}
-}
-
 void Example00X()
 {
 	Window::Create("Game", 1600, 900);
@@ -118,15 +82,8 @@ void Example00X()
 
 	// initialize point lights
 	// lighting info
-	// -------------
-	// instance array data for our light volumes
-	//std::vector<glm::mat4> modelMatrices;
-	//std::vector<glm::vec4> modelColorSizes;
-	//configurePointLights(modelMatrices, modelColorSizes, pointLightRadius, pointLightSeparation, pointLightVerticalOffset);
-
 	std::vector<InstanceData> instanceData;
 	configurePointLights(instanceData, pointLightRadius, pointLightSeparation, pointLightVerticalOffset);
-
 
 	class SceneLight
 	{
@@ -155,13 +112,7 @@ void Example00X()
 	GLVertexArrayRef VAOEmpty{ new GLVertexArray };
 
 	ModelRef model{ new Model("Data/Models/sponza/sponza.obj") };
-	//ModelRef model{ new Model("Data/Models/sponza2/sponza.obj") };
-	//ModelRef model{ new Model("Data/Models/holodeck/holodeck.obj") };
-	//ModelRef model{ new Model("Data/Models/lost-empire/lost_empire.obj") };
-	//ModelRef model{ new Model("Data/Models/sibenik/sibenik.obj") };
-
 	ModelRef model2{ new Model("Data/Models/Dragon.obj") };
-
 	ModelRef sphereModel{ new Model("Data/Models/Sphere.obj") };
 	auto sphereVao = (*sphereModel)[0]->GetVAO();
 	GLBufferRef instanceBuffer{ new GLBuffer(instanceData) };
@@ -198,34 +149,7 @@ void Example00X()
 
 	}
 
-
-#pragma region lighting info
-	const unsigned int NR_LIGHTS = 64;
-	std::vector<glm::vec3> lightPositions;
-	std::vector<glm::vec3> lightColors;
-	srand(123);
-	for (unsigned int i = 0; i < NR_LIGHTS; i++)
-	{
-		// calculate slightly random offsets
-		float xPos = static_cast<float>(((rand() % 100) / 100.0) * 6.0 - 3.0);
-		float yPos = static_cast<float>(((rand() % 100) / 100.0) * 6.0 - 4.0);
-		float zPos = static_cast<float>(((rand() % 100) / 100.0) * 6.0 - 3.0);
-
-		//auto bmin = glm::abs(model->GetBounding().min);
-		//auto bsize = bmin + glm::abs(model->GetBounding().max);
-		//float xPos = static_cast<float>(rand() % (int)bsize.x - bmin.x);
-		//float yPos = static_cast<float>(rand() % (int)bsize.y - bmin.y);
-		//float zPos = static_cast<float>(rand() % (int)bsize.z - bmin.z);
-
-		lightPositions.push_back(glm::vec3(xPos, yPos, zPos));
-		// also calculate random color
-		float rColor = static_cast<float>(((rand() % 100) / 200.0f) + 0.5); // between 0.5 and 1.)
-		float gColor = static_cast<float>(((rand() % 100) / 200.0f) + 0.5); // between 0.5 and 1.)
-		float bColor = static_cast<float>(((rand() % 100) / 200.0f) + 0.5); // between 0.5 and 1.)
-		lightColors.push_back(glm::vec3(rColor, gColor, bColor));
-	}
-
-#pragma endregion
+	QuadShapeRef quad{ new QuadShape{} };
 
 	while (!Window::ShouldClose())
 	{
@@ -333,6 +257,10 @@ void Example00X()
 			glm::vec4 modelSpecular = glm::vec4(1.0f, 1.0f, 1.0f, 0.8f);
 			gbuffer->GetProgram()->SetFragmentUniform(0, modelSpecular);
 			model2->Draw(gbuffer->GetProgram());
+
+			modelScale = glm::scale(glm::mat4(1.0f), glm::vec3(10.0f));
+			gbuffer->GetProgram()->SetVertexUniform(2, modelScale);
+			quad->Draw();
 		}
 
 		// 3. lighting pass: calculate lighting by iterating over a screen filled quad pixel-by-pixel using the gbuffer's content and shadow map

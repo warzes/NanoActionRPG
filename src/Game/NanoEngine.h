@@ -107,6 +107,11 @@ void Fatal(const std::string& text);
 //==============================================================================
 #pragma region Math
 
+[[nodiscard]] inline int NumMipmap(int width, int height)
+{
+	return static_cast<int>(std::floor(std::log2(std::max(width, height)))) + 1;
+}
+
 class AABB final
 {
 public:
@@ -266,11 +271,16 @@ public:
 	void FlushMappedRange(GLintptr offset, GLsizeiptr size);
 	void Unmap();
 
+	[[nodiscard]] size_t GetElementSize() const { return m_elementSize; }
+	[[nodiscard]] size_t GetElementCount() const { return m_elementCount; }
+	
 private:
 	void createHandle();
 	void destroyHandle();
 
 	GLuint m_handle = 0;
+	size_t m_elementSize = 0;
+	size_t m_elementCount = 0;
 };
 using GLBufferRef = std::shared_ptr<GLBuffer>;
 
@@ -278,8 +288,10 @@ class GLVertexArray final
 {
 public:
 	GLVertexArray();
-	GLVertexArray(GLBufferRef vbo, size_t vertexSize, const std::vector<AttribFormat>& attribFormats);
-	GLVertexArray(GLBufferRef vbo, size_t vertexSize, GLBufferRef ibo, size_t indexNum, IndexFormat indexFormat, const std::vector<AttribFormat>& attribFormats);
+	GLVertexArray(GLBufferRef vbo, const std::vector<AttribFormat>& attribFormats);
+	GLVertexArray(GLBufferRef vbo, GLBufferRef ibo, const std::vector<AttribFormat>& attribFormats);
+	template<typename T>
+	GLVertexArray(const std::vector<T>& vertices, const std::vector<AttribFormat>& attribFormats);
 	template<typename T>
 	GLVertexArray(const std::vector<T>& vertices, const std::vector<uint8_t>& indices, const std::vector<AttribFormat>& attribFormats);
 	template<typename T>
@@ -300,16 +312,13 @@ private:
 	void createHandle();
 	void destroyHandle();
 	void setAttribFormats(const std::vector<AttribFormat>& attribFormats);
-	void setVertexBuffer(GLBufferRef vbo, size_t vertexSize);
+	void setVertexBuffer(GLBufferRef vbo);
 	void setVertexBuffer(GLuint bindingIndex, GLBufferRef vbo, GLintptr offset = 0, size_t stride = 1);
-	void setIndexBuffer(GLBufferRef ibo, size_t indexNum, IndexFormat indexFormat);
+	void setIndexBuffer(GLBufferRef ibo);
 
 	GLuint m_handle = 0;
 	GLBufferRef m_vbo = nullptr;
 	GLBufferRef m_ibo = nullptr;
-	size_t m_vertexSize = 0;
-	IndexFormat m_indexFormat = IndexFormat::UInt32;
-	size_t m_indexNum = 0;
 };
 using GLVertexArrayRef = std::shared_ptr<GLVertexArray>;
 
@@ -516,6 +525,18 @@ using ModelRef = std::shared_ptr<Model>;
 // Scene
 //==============================================================================
 #pragma region Scene
+
+class QuadShape final
+{
+public:
+	QuadShape();
+
+	void Draw();
+private:
+	std::vector<MeshVertex> getData();
+	GLVertexArrayRef m_vao;
+};
+using QuadShapeRef = std::shared_ptr<QuadShape>;
 
 class Camera final
 {
