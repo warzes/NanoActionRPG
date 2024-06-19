@@ -19,8 +19,11 @@
 #	pragma warning(disable : 5219)
 #endif
 
+#define _USE_MATH_DEFINES
+
 #include <cassert>
 #include <cstring>
+#include <cmath>
 #include <string>
 #include <random>
 #include <ratio>
@@ -110,6 +113,11 @@ void Fatal(const std::string& text);
 [[nodiscard]] inline int NumMipmap(int width, int height)
 {
 	return static_cast<int>(std::floor(std::log2(std::max(width, height)))) + 1;
+}
+
+[[nodiscard]] inline glm::mat4 mat4_cast(const aiMatrix4x4& m)
+{
+	return glm::transpose(glm::make_mat4(&m.a1));
 }
 
 class AABB final
@@ -445,6 +453,8 @@ struct MaterialProperties final
 	float refracti = 0.0f;
 };
 
+constexpr int MAX_BONE_INFLUENCE = 4;
+
 struct MeshVertex final
 {
 	glm::vec3 position;
@@ -452,6 +462,10 @@ struct MeshVertex final
 	glm::vec3 normal;
 	glm::vec2 texCoords;
 	glm::vec3 tangent;
+	glm::vec3 bitangent;
+
+	int boneIDs[MAX_BONE_INFLUENCE];   // Bone indexes which will influence this vertex
+	float weights[MAX_BONE_INFLUENCE]; // Weights from each bone
 };
 
 constexpr inline std::vector<AttribFormat> GetMeshVertexFormat();
@@ -501,20 +515,19 @@ public:
 
 private:
 	void loadAssimpModel(const std::string& modelPath, bool flipUV);
-	void processNode();
-	MeshRef processMesh(const aiMesh* AiMesh);
-	void processVertex(const aiMesh* AiMesh, std::vector<MeshVertex>& vertices);
+	void processNode(aiNode* node, const aiScene* scene, const glm::mat4& parentTransform);
+	MeshRef processMesh(const aiMesh* mesh, const aiScene* scene, const glm::mat4& transform);
+	void processVertex(const aiMesh* AiMesh, const glm::mat4& transform, std::vector<MeshVertex>& vertices);
 	void processIndices(const aiMesh* AiMesh, std::vector<uint32_t>& indices);
-	void processTextures(const aiMesh* AiMesh, std::vector<MaterialTexture>& textures);
+	void processTextures(const aiMesh* AiMesh, const aiScene* scene, std::vector<MaterialTexture>& textures);
 	void loadTextureFromMaterial(aiTextureType textureType, const aiMaterial* mat, std::vector<MaterialTexture>& textures);
-	void processMatProperties(const aiMesh* AiMesh, MaterialProperties& meshMatProperties);
+	void processMatProperties(const aiMesh* AiMesh, const aiScene* scene, MaterialProperties& meshMatProperties);
 	void computeAABB();
 
 	int m_meshCount = -1;
 	std::vector<MaterialTexture> m_loadedTextures;
 	std::vector<MeshRef> m_meshes;
 	std::string m_directory;
-	const aiScene* m_scene = nullptr;
 	AABB m_bounding;
 };
 using ModelRef = std::shared_ptr<Model>;

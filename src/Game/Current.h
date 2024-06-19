@@ -3,7 +3,6 @@
 const float INITIAL_POINT_LIGHT_RADIUS = 1.663f;
 const unsigned int LIGHT_GRID_WIDTH = 10;  // point light grid size
 const unsigned int LIGHT_GRID_HEIGHT = 3;  // point light vertical grid height
-#define M_PI       3.14159265358979323846   // pi
 
 struct InstanceData {
 	glm::vec4 instanceParam;

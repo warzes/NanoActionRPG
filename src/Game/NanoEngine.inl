@@ -83,6 +83,12 @@ inline constexpr std::pair<GLint, GLenum> TypeToSizeEnum()
 	if constexpr (std::is_same_v<T, glm::vec2>) return std::make_pair(2, GL_FLOAT);
 	if constexpr (std::is_same_v<T, glm::vec3>) return std::make_pair(3, GL_FLOAT);
 	if constexpr (std::is_same_v<T, glm::vec4>) return std::make_pair(4, GL_FLOAT);
+	if constexpr (std::is_same_v<T, glm::ivec2>) return std::make_pair(2, GL_INT);
+	if constexpr (std::is_same_v<T, glm::ivec3>) return std::make_pair(3, GL_INT);
+	if constexpr (std::is_same_v<T, glm::ivec4>) return std::make_pair(4, GL_INT);
+	if constexpr (std::is_same_v<T, glm::uvec2>) return std::make_pair(2, GL_UNSIGNED_INT);
+	if constexpr (std::is_same_v<T, glm::uvec3>) return std::make_pair(3, GL_UNSIGNED_INT);
+	if constexpr (std::is_same_v<T, glm::uvec4>) return std::make_pair(4, GL_UNSIGNED_INT);
 }
 
 template<typename T>
@@ -256,6 +262,9 @@ inline constexpr std::vector<AttribFormat> GetMeshVertexFormat()
 		CreateAttribFormat<glm::vec3>(2, offsetof(MeshVertex, normal)),
 		CreateAttribFormat<glm::vec2>(3, offsetof(MeshVertex, texCoords)),
 		CreateAttribFormat<glm::vec3>(4, offsetof(MeshVertex, tangent)),
+		CreateAttribFormat<glm::vec3>(5, offsetof(MeshVertex, bitangent)),
+		CreateAttribFormat<glm::ivec4>(6, offsetof(MeshVertex, boneIDs)),
+		CreateAttribFormat<glm::vec4>(7, offsetof(MeshVertex, weights)),
 	};
 }
 

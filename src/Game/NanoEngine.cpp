@@ -863,94 +863,114 @@ MeshRef Model::operator[](size_t idx)
 
 void Model::loadAssimpModel(const std::string& modelPath, bool flipUV)
 {
-	unsigned int flags = aiProcess_Triangulate | aiProcess_CalcTangentSpace;
+	unsigned int flags = aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace;
 #if defined(GLM_FORCE_LEFT_HANDED)
 	flags |= aiProcess_MakeLeftHanded;
 #endif
 	if (flipUV) flags |= aiProcess_FlipUVs;
 
 	Assimp::Importer modelImporter;
-	m_scene = modelImporter.ReadFile(modelPath, flags);
-	if (!m_scene || !m_scene->mRootNode || m_scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE)
+	const aiScene* scene = modelImporter.ReadFile(modelPath, flags);
+	if (!scene || !scene->mRootNode || scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE)
 	{
 		Error("Load Model error: " + std::string(modelImporter.GetErrorString()));
 		return;
 	}
 	m_directory = modelPath.substr(0, modelPath.find_last_of('/'));
-	processNode();
+	processNode(scene->mRootNode, scene, glm::mat4(1.0));
 	computeAABB();
 }
 
-void Model::processNode()
+void Model::processNode(aiNode* node, const aiScene* scene, const glm::mat4& parentTransform)
 {
-	for (unsigned i = 0; i < m_scene->mNumMeshes; ++i)
-		m_meshes.push_back(processMesh(m_scene->mMeshes[i]));
+	glm::mat4 nodeTransform = mat4_cast(node->mTransformation);
+	glm::mat4 totalTransform = parentTransform * nodeTransform;
+
+	for (unsigned i = 0; i < node->mNumMeshes; ++i)
+	{
+		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
+		m_meshes.push_back(processMesh(mesh, scene, totalTransform));
+	}
+	for (unsigned i = 0; i < node->mNumChildren; ++i)
+	{
+		processNode(node->mChildren[i], scene, totalTransform);
+	}
 }
 
-MeshRef Model::processMesh(const aiMesh* AiMesh)
+MeshRef Model::processMesh(const aiMesh* mesh, const aiScene* scene, const glm::mat4& transform)
 {
-	_ASSERT(AiMesh);
+	_ASSERT(mesh);
 	std::vector<MeshVertex> vertices;
 	std::vector<uint32_t> indices;
 	std::vector<MaterialTexture> textures;
 	MaterialProperties matProperties;
-	processVertex(AiMesh, vertices);
-	processIndices(AiMesh, indices);
-	processTextures(AiMesh, textures);
-	processMatProperties(AiMesh, matProperties);
+	processVertex(mesh, transform, vertices);
+	processIndices(mesh, indices);
+	processTextures(mesh, scene, textures);
+	processMatProperties(mesh, scene, matProperties);
 	return std::make_shared<Mesh>(vertices, indices, textures, matProperties);
 }
 
-void Model::processVertex(const aiMesh* AiMesh, std::vector<MeshVertex>& vertices)
+void Model::processVertex(const aiMesh* mesh, const glm::mat4& transform, std::vector<MeshVertex>& vertices)
 {
-	assert(AiMesh);
-	for (unsigned i = 0; i < AiMesh->mNumVertices; ++i)
+	for (unsigned i = 0; i < mesh->mNumVertices; ++i)
 	{
+		auto aiVert = mesh->mVertices;
+		auto aiClr = mesh->mColors[0];
+		auto aiNormals = mesh->mNormals;
+		auto aiTexCoords = mesh->mTextureCoords[0];
+		auto aiTangents = mesh->mTangents;
+		auto aiBitangents = mesh->mBitangents;
+
 		MeshVertex vertex;
-		vertex.position = glm::vec3(AiMesh->mVertices[i].x, AiMesh->mVertices[i].y, AiMesh->mVertices[i].z);
 
-		if (AiMesh->mColors[0])
-			vertex.color = glm::vec3(AiMesh->mColors[0][i].r, AiMesh->mColors[0][i].g, AiMesh->mColors[0][i].b);
-		else
-		vertex.color = glm::vec3(1.0f);
+		vertex.position = transform * glm::vec4(aiVert[i].x, aiVert[i].y, aiVert[i].z, 1.0f);
 
-		if (AiMesh->mNormals)
-			vertex.normal = glm::vec3(AiMesh->mNormals[i].x, AiMesh->mNormals[i].y, AiMesh->mNormals[i].z);
+		if (mesh->HasVertexColors(0)) 
+			vertex.color = glm::vec3(aiClr[i].r, aiClr[i].g, aiClr[i].b);
+		else 
+			vertex.color = glm::vec3(1.0f);
+
+		if (mesh->HasNormals())
+			vertex.normal = transform * glm::vec4(aiNormals[i].x, aiNormals[i].y, aiNormals[i].z, 0);
 		else
 			vertex.normal = glm::vec3(0.0f);
 
-		if (AiMesh->mTextureCoords[0])
-			vertex.texCoords = glm::vec2(AiMesh->mTextureCoords[0][i].x, AiMesh->mTextureCoords[0][i].y);
+		if (mesh->HasTextureCoords(0))
+			vertex.texCoords = glm::vec2(aiTexCoords[i].x, aiTexCoords[i].y);
 		else
 			vertex.texCoords = glm::vec2(0.0f);
 
-		if (AiMesh->mTangents)
-			vertex.tangent = glm::vec3(AiMesh->mTangents[i].x, AiMesh->mTangents[i].y, AiMesh->mTangents[i].z);
+		if (mesh->HasTangentsAndBitangents())
+		{
+			vertex.tangent = glm::vec3(aiTangents[i].x, aiTangents[i].y, aiTangents[i].z);
+			vertex.bitangent = glm::vec3(aiBitangents[i].x, aiBitangents[i].y, aiBitangents[i].z);
+		}
 		else
+		{
 			vertex.tangent = glm::vec3(0.0f);
+			vertex.bitangent = glm::vec3(0.0f);
+		}
 
 		vertices.push_back(vertex);
 	}
 }
 
-void Model::processIndices(const aiMesh* AiMesh, std::vector<uint32_t>& indices)
+void Model::processIndices(const aiMesh* mesh, std::vector<uint32_t>& indices)
 {
-	assert(AiMesh);
-	for (unsigned i = 0; i < AiMesh->mNumFaces; ++i)
+	for (unsigned i = 0; i < mesh->mNumFaces; ++i)
 	{
-		aiFace AiFace = AiMesh->mFaces[i];
-		for (unsigned k = 0; k < AiFace.mNumIndices; ++k)
-			indices.push_back(AiFace.mIndices[k]);
+		aiFace face = mesh->mFaces[i];
+		for (unsigned k = 0; k < face.mNumIndices; ++k)
+			indices.push_back(face.mIndices[k]);
 	}
 }
 
-void Model::processTextures(const aiMesh* AiMesh, std::vector<MaterialTexture>& textures)
+void Model::processTextures(const aiMesh* mesh, const aiScene* scene, std::vector<MaterialTexture>& textures)
 {
-	_ASSERT(AiMesh);
-	if (AiMesh->mMaterialIndex < 0)
-		return;
-	aiMaterial* material = m_scene->mMaterials[AiMesh->mMaterialIndex];
+	aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 	loadTextureFromMaterial(aiTextureType_DIFFUSE, material, textures);
+	loadTextureFromMaterial(aiTextureType_NORMALS, material, textures);
 	loadTextureFromMaterial(aiTextureType_SPECULAR, material, textures);
 	loadTextureFromMaterial(aiTextureType_HEIGHT, material, textures);
 	loadTextureFromMaterial(aiTextureType_SHININESS, material, textures);
@@ -959,6 +979,9 @@ void Model::processTextures(const aiMesh* AiMesh, std::vector<MaterialTexture>& 
 
 void Model::loadTextureFromMaterial(aiTextureType textureType, const aiMaterial* mat, std::vector<MaterialTexture>& textures)
 {
+	// TODO: генерировать дефолтную текстуру если нет своей
+	// TODO: кеширование текстур
+
 	_ASSERT(mat);
 	GLint TextureCount = mat->GetTextureCount(textureType);
 	int TextureIndex = -1;
@@ -995,12 +1018,9 @@ void Model::loadTextureFromMaterial(aiTextureType textureType, const aiMaterial*
 	}
 }
 
-void Model::processMatProperties(const aiMesh* AiMesh, MaterialProperties& meshMatProperties)
+void Model::processMatProperties(const aiMesh* mesh, const aiScene* scene, MaterialProperties& meshMatProperties)
 {
-	_ASSERT(AiMesh);
-	if (AiMesh->mMaterialIndex < 0)
-		return;
-	aiMaterial* pAiMat = m_scene->mMaterials[AiMesh->mMaterialIndex];
+	aiMaterial* pAiMat = scene->mMaterials[mesh->mMaterialIndex];
 	aiColor3D AmbientColor, DiffuseColor, SpecularColor;
 	float Shininess = 0.0f, Refracti = 0.0f;
 	pAiMat->Get(AI_MATKEY_COLOR_AMBIENT, AmbientColor);

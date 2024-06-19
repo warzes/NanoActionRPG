@@ -84,3 +84,10 @@ https://habr.com/ru/articles/308980/ - инпут лаг
 https://github.com/atlantis13579/Riemann - физ движок
 https://github.com/AngelMonica126/GraphicAlgorithm
 https://github.com/shff/opengl_sky - процедурное небо
+
+
+
+
+
+https://www.youtube.com/watch?v=dNoqwwsUMPs - без по стенам
+		https://www.youtube.com/watch?v=uVv45oq6Hkg
