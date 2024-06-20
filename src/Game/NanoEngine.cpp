@@ -1057,7 +1057,6 @@ Animation::State Animation::GetState() const
 
 #pragma endregion
 
-
 #pragma region Model
 
 Model::Model(const std::string& modelPath, bool flipUV)
@@ -1113,8 +1112,48 @@ void Model::loadAssimpModel(const std::string& modelPath, bool flipUV)
 		return;
 	}
 	m_directory = modelPath.substr(0, modelPath.find_last_of('/'));
+	loadAnimations(scene);
 	processNode(scene->mRootNode, scene, glm::mat4(1.0));
 	computeAABB();
+}
+
+constexpr glm::vec3 toglm(const aiVector3D& vec) { return glm::vec3(vec.x, vec.y, vec.z); }
+constexpr glm::vec2 toglm(const aiVector2D& vec) { return glm::vec2(vec.x, vec.y); }
+constexpr glm::quat toglm(const aiQuaternion& q) { return glm::quat(q.w, q.x, q.y, q.z); }
+
+void Model::loadAnimations(const aiScene* scene)
+{
+	for (int i = 0; i < scene->mNumAnimations; i++)
+	{
+		auto anim = scene->mAnimations[i];
+		auto tmp = std::make_shared<Animation>(anim->mName.C_Str());
+		float tps = anim->mTicksPerSecond;
+		tmp->SetTPS(tps > 0 ? tps : 30.0);
+		tmp->SetDuration(anim->mDuration);
+
+		for (int j = 0; j < anim->mNumChannels; j++)
+		{
+			auto channel = anim->mChannels[j];
+			Keyframe kf;
+			for (int k = 0; k < channel->mNumPositionKeys; k++)
+			{
+				kf.posStamps.push_back(channel->mPositionKeys[k].mTime);
+				kf.positions.push_back(toglm(channel->mPositionKeys[k].mValue));
+			}
+			for (int k = 0; k < channel->mNumRotationKeys; k++)
+			{
+				kf.rotStamps.push_back(channel->mRotationKeys[k].mTime);
+				kf.rotations.push_back(toglm(channel->mRotationKeys[k].mValue));
+			}
+			for (int k = 0; k < channel->mNumScalingKeys; k++)
+			{
+				kf.scaleStamps.push_back(channel->mScalingKeys[k].mTime);
+				kf.scales.push_back(toglm(channel->mScalingKeys[k].mValue));
+			}
+			tmp->AddKeyframe(channel->mNodeName.C_Str(), kf);
+		}
+		m_animations.push_back(tmp);
+	}
 }
 
 void Model::processNode(aiNode* node, const aiScene* scene, const glm::mat4& parentTransform)

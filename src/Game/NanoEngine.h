@@ -646,6 +646,7 @@ public:
 
 private:
 	void loadAssimpModel(const std::string& modelPath, bool flipUV);
+	void loadAnimations(const aiScene* scene);
 	void processNode(aiNode* node, const aiScene* scene, const glm::mat4& parentTransform);
 	MeshRef processMesh(const aiMesh* mesh, const aiScene* scene, const glm::mat4& transform);
 	void processVertex(const aiMesh* AiMesh, const glm::mat4& transform, std::vector<MeshVertex>& vertices);
@@ -660,6 +661,8 @@ private:
 	std::vector<MeshRef> m_meshes;
 	std::string m_directory;
 	AABB m_bounding;
+
+	std::vector<std::shared_ptr<Animation>> m_animations;
 };
 using ModelRef = std::shared_ptr<Model>;
 
