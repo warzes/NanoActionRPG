@@ -4,7 +4,40 @@
 //==============================================================================
 #pragma region Core
 
+#pragma region Time
 
+template<typename Rep, typename Period>
+inline constexpr Time::Time(const std::chrono::duration<Rep, Period>& duration) : m_microseconds(duration)
+{
+}
+
+inline constexpr float Time::AsSeconds() const
+{
+	return std::chrono::duration<float>(m_microseconds).count();
+}
+
+inline constexpr int32_t Time::AsMilliseconds() const
+{
+	return std::chrono::duration_cast<std::chrono::duration<std::int32_t, std::milli>>(m_microseconds).count();
+}
+
+inline constexpr int64_t Time::AsMicroseconds() const
+{
+	return m_microseconds.count();
+}
+
+inline constexpr std::chrono::microseconds Time::ToDuration() const
+{
+	return m_microseconds;
+}
+
+template<typename Rep, typename Period>
+inline constexpr Time::operator std::chrono::duration<Rep, Period>() const
+{
+	return m_microseconds;
+}
+
+#pragma endregion
 
 #pragma endregion
 

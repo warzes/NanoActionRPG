@@ -122,7 +122,14 @@ private:
 class Clock final
 {
 public:
+	[[nodiscard]] Time GetElapsedTime() const;
 
+	[[nodiscard]] bool IsRunning() const;
+
+	void Start();
+	void Stop();
+	Time Restart();
+	Time Reset();
 private:
 	using ClockImpl = std::conditional_t<std::chrono::high_resolution_clock::is_steady, std::chrono::high_resolution_clock, std::chrono::steady_clock>;
 
