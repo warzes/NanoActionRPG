@@ -1,9 +1,21 @@
+
+//==============================================================================
+// CORE
+//==============================================================================
+#pragma region Core
+
+
+
+#pragma endregion
+
 //==============================================================================
 // Math
 //==============================================================================
 #pragma region Math
 
-inline AABB::AABB(const glm::vec3& inMin, const glm::vec3& inMax) 
+#pragma region AABB
+
+inline AABB::AABB(const glm::vec3& inMin, const glm::vec3& inMax)
 	: min(inMin), max(inMax)
 {
 }
@@ -66,6 +78,61 @@ inline bool AABB::Inside(const glm::vec3& point)
 		&& max.y > point.y && min.y < point.y
 		&& max.z > point.z && min.z < point.x;
 }
+
+#pragma endregion
+
+#pragma region Transform
+
+inline Transform::Transform(const glm::vec3& position, const glm::mat3& orientation)
+	: m_position(position)
+	, m_orientation(glm::quat(orientation))
+{
+}
+
+inline Transform::Transform(const glm::vec3& position, const glm::quat& orientation)
+	: m_position(position)
+	, m_orientation(orientation)
+{
+}
+
+inline const glm::vec3& Transform::GetPosition() const
+{
+	return m_position;
+}
+
+inline const glm::quat& Transform::GetOrientation() const
+{
+	return m_orientation;
+}
+
+inline void Transform::SetIdentity()
+{
+	m_position = glm::vec3(0.0f);
+	m_orientation = glm::quat::wxyz(1.0f, 0.0f, 0.0f, 0.0f);
+}
+
+inline void Transform::SetPosition(const glm::vec3& position)
+{
+	m_position = position;
+}
+
+inline void Transform::SetOrientation(const glm::quat& orientation)
+{
+	m_orientation = orientation;
+}
+
+inline Transform Transform::GetInverse() const
+{
+	const glm::quat invOrientation = glm::inverse(m_orientation);
+	return Transform(invOrientation * (-m_position), invOrientation);
+}
+
+inline glm::vec3 Transform::operator*(const glm::vec3& v) const
+{
+	return (m_orientation * v) + m_position;
+}
+
+#pragma endregion
 
 #pragma endregion
 

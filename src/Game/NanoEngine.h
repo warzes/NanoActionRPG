@@ -96,6 +96,43 @@ Left handed
 #pragma endregion
 
 //==============================================================================
+// CORE
+//==============================================================================
+#pragma region Core
+
+class Time final
+{
+public:
+	constexpr Time() = default;
+	template <typename Rep, typename Period>
+	constexpr Time(const std::chrono::duration<Rep, Period>& duration);
+
+	constexpr float AsSeconds() const;
+	constexpr int32_t AsMilliseconds() const;
+	constexpr int64_t AsMicroseconds() const;
+
+	constexpr std::chrono::microseconds ToDuration() const;
+	template <typename Rep, typename Period>
+	constexpr operator std::chrono::duration<Rep, Period>() const;
+
+private:
+	std::chrono::microseconds m_microseconds{};
+};
+
+class Clock final
+{
+public:
+
+private:
+	using ClockImpl = std::conditional_t<std::chrono::high_resolution_clock::is_steady, std::chrono::high_resolution_clock, std::chrono::steady_clock>;
+
+	ClockImpl::time_point m_refPoint{ ClockImpl::now() };
+	ClockImpl::time_point m_stopPoint;
+};
+
+#pragma endregion
+
+//==============================================================================
 // LOG
 //==============================================================================
 #pragma region Log
@@ -142,6 +179,29 @@ public:
 
 	glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
 	glm::vec3 max = glm::vec3(std::numeric_limits<float>::lowest());
+};
+
+class Transform final
+{
+public:
+	Transform() = default;
+	Transform(const glm::vec3& position, const glm::mat3& orientation);
+	Transform(const glm::vec3& position, const glm::quat& orientation);
+
+	[[nodiscard]] const glm::vec3& GetPosition() const;
+	[[nodiscard]] const glm::quat& GetOrientation() const;
+
+	void SetIdentity();
+	void SetPosition(const glm::vec3& position);
+	void SetOrientation(const glm::quat& orientation);
+
+	[[nodiscard]] Transform GetInverse() const;
+
+	glm::vec3 operator*(const glm::vec3& v) const;
+
+private:
+	glm::vec3 m_position = glm::vec3(0.0f);
+	glm::quat m_orientation = glm::quat::wxyz(1.0f, 0.0f, 0.0f, 0.0f);
 };
 
 #pragma endregion
@@ -500,6 +560,70 @@ private:
 };
 using MeshRef = std::shared_ptr<Mesh>;
 
+struct Keyframe final
+{
+	std::vector<float> posStamps;
+	std::vector<float> rotStamps;
+	std::vector<float> scaleStamps;
+
+	std::vector<glm::vec3> positions;
+	std::vector<glm::quat> rotations;
+	std::vector<glm::vec3> scales;
+};
+
+class Animation final
+{
+public:
+	enum class State
+	{
+		Stopped,
+		Playing,
+		Paused
+	};
+
+	Animation(const std::string& name);
+
+	void SetName(const std::string& name);
+	void SetTPS(float tps);
+	void SetDuration(float duration);
+	void SetIsRepeated(bool repeat);
+	void SetIsBlending(bool blending);
+	void SetLastTime(float lastTime);
+
+	void AddKeyframe(const std::string& name, const Keyframe& keyframe);
+
+	void Play(float time = 0);
+	void Pause();
+	void Stop();
+
+	std::unordered_map<std::string, std::pair<Transform, glm::vec3>> Update();
+
+	std::unordered_map<std::string, Keyframe>& GetKeyframes();
+	std::string GetName() const;
+
+	bool IsRepeated() const;
+	bool IsBlending() const;
+	float GetTime() const;
+	float GetLastTime() const;
+	float GetDuration() const;
+	float GetTPS() const;
+
+	State GetState() const;
+
+private:
+	std::string m_name;
+	State m_state = State::Stopped;
+	bool m_repeat = true;
+	bool m_blending = false;
+
+	float m_duration = 0.0f;
+	float m_tps = 30.0f;
+	float m_lastTime = 0.0f;
+	std::unordered_map<std::string, Keyframe> m_keyframes;
+
+	Clock m_time;
+};
+
 class Model final
 {
 public:
@@ -538,6 +662,8 @@ using ModelRef = std::shared_ptr<Model>;
 // Scene
 //==============================================================================
 #pragma region Scene
+
+// TODO: shapes перенести в Model как статические методы создания Model, а не отдельный класс
 
 class QuadShape final
 {

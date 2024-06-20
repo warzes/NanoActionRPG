@@ -831,6 +831,179 @@ void Mesh::init()
 
 #pragma endregion
 
+#pragma region Animation
+
+std::pair<int, float> TimeFraction(std::vector<float>& times, float dt)
+{
+	if (times.empty()) return { 1, 1.0 };
+
+	int seg = 0;
+	while (dt > times[seg]) seg++;
+	float frac = (dt - times[seg - 1]) / (times[seg] - times[seg - 1]);
+
+	return { seg, frac };
+}
+
+Animation::Animation(const std::string& name)
+	: m_name(name)
+{
+}
+
+void Animation::SetName(const std::string& name)
+{
+	m_name = name;
+}
+
+void Animation::SetTPS(float tps)
+{
+	m_tps = tps;
+}
+
+void Animation::SetDuration(float duration)
+{
+	m_duration = duration;
+}
+
+void Animation::SetIsRepeated(bool repeat)
+{
+	m_repeat = repeat;
+}
+
+void Animation::SetIsBlending(bool blending)
+{
+	m_blending = blending;
+}
+
+void Animation::SetLastTime(float lastTime)
+{
+	m_lastTime = lastTime;
+}
+
+void Animation::AddKeyframe(const std::string& name, const Keyframe& keyframe)
+{
+	m_keyframes[name] = keyframe;
+}
+
+void Animation::Play(float time)
+{
+	if (m_state != State::Paused)
+	{
+		m_lastTime = time;
+		if (time < 0)
+			m_blending = true;
+	}
+
+	m_state = State::Playing;
+	m_time.Restart();
+}
+
+void Animation::Pause()
+{
+	m_state = State::Paused;
+	m_lastTime = GetTime() + m_lastTime;
+}
+
+void Animation::Stop()
+{
+	m_state = State::Stopped;
+	m_lastTime = 0.01;
+}
+
+std::unordered_map<std::string, std::pair<Transform, glm::vec3>> Animation::Update()
+{
+	std::unordered_map<std::string, std::pair<Transform, glm::vec3>> actions;
+
+	if (m_state != State::Stopped)
+		for (auto& [name, keyframe] : m_keyframes)
+		{
+			float time = 0;
+			if (m_state == State::Playing)
+			{
+				time = GetTime();
+				if (m_lastTime != 0)
+					time += m_lastTime;
+			}
+			else time = m_lastTime;
+
+			if (m_state == State::Playing && time >= m_duration)
+			{
+				if (m_repeat)
+				{
+					time = m_time.restart().asSeconds() * m_tps;
+					m_lastTime = 0;
+				}
+				else
+				{
+					time = m_duration;
+					m_state = State::Paused;
+					m_lastTime = m_duration;
+				}
+			}
+
+			float dt = fmod(time == 0 ? time + 0.01 : (time == m_duration ? time - 0.01 : time), m_duration);
+
+			auto posFraction = TimeFraction(keyframe.posStamps, dt);
+			auto rotFraction = TimeFraction(keyframe.rotStamps, dt);
+			auto scaleFraction = TimeFraction(keyframe.scaleStamps, dt);
+
+			glm::vec3 pos = glm::mix(keyframe.positions[posFraction.first - 1], keyframe.positions[posFraction.first], posFraction.second);
+			glm::quat rot = glm::slerp(keyframe.rotations[rotFraction.first - 1], keyframe.rotations[rotFraction.first], rotFraction.second);
+			glm::vec3 scale = glm::mix(keyframe.scales[scaleFraction.first - 1], keyframe.scales[scaleFraction.first], scaleFraction.second);
+
+			actions[name] = { { { pos.x, pos.y, pos.z }, { rot.x, rot.y, rot.z, rot.w } }, { scale.x, scale.y, scale.z } };
+		}
+
+	return actions;
+}
+
+std::unordered_map<std::string, Keyframe>& Animation::GetKeyframes()
+{
+	return m_keyframes;
+}
+
+std::string Animation::GetName() const
+{
+	return m_name;
+}
+
+bool Animation::IsRepeated() const
+{
+	return m_repeat;
+}
+
+bool Animation::IsBlending() const
+{
+	return m_blending;
+}
+
+float Animation::GetTime() const
+{
+	return m_time.getElapsedTime().asSeconds() * m_tps;
+}
+
+float Animation::GetLastTime() const
+{
+	return m_lastTime;
+}
+
+float Animation::GetDuration() const
+{
+	return m_duration;
+}
+
+float Animation::GetTPS() const
+{
+	return m_tps;
+}
+
+Animation::State Animation::GetState() const
+{
+	return m_state;
+}
+
+#pragma endregion
+
+
 #pragma region Model
 
 Model::Model(const std::string& modelPath, bool flipUV)
@@ -871,13 +1044,14 @@ MeshRef Model::operator[](size_t idx)
 
 void Model::loadAssimpModel(const std::string& modelPath, bool flipUV)
 {
-	unsigned int flags = aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace;
+	unsigned int flags = aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace | aiProcess_LimitBoneWeights;
 #if defined(GLM_FORCE_LEFT_HANDED)
 	flags |= aiProcess_MakeLeftHanded;
 #endif
 	if (flipUV) flags |= aiProcess_FlipUVs;
 
 	Assimp::Importer modelImporter;
+	modelImporter.SetPropertyInteger(AI_CONFIG_PP_LBW_MAX_WEIGHTS, 1);
 	const aiScene* scene = modelImporter.ReadFile(modelPath, flags);
 	if (!scene || !scene->mRootNode || scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE)
 	{
@@ -1101,6 +1275,10 @@ void CubeShape::Draw()
 
 std::vector<MeshVertex> CubeShape::getData()
 {
+
+
+
+
 	// TODO: указать правильный Tangent
 	return
 	{
@@ -1282,6 +1460,18 @@ void Camera::update()
 //==============================================================================
 #pragma region Window
 
+void framesizeCallback(GLFWwindow* /*window*/, int width, int height) noexcept
+{
+	width = std::max(width, 1);
+	height = std::max(height, 1);
+
+	if (Engine.windowWidth != width || Engine.windowHeight != height)
+		Engine.IsResize = true;
+
+	Engine.windowWidth = width;
+	Engine.windowHeight = height;
+}
+
 void mouseCallback(GLFWwindow* /*window*/, double xPosIn, double yPosIn) noexcept
 {
 	MouseState.position = glm::ivec2{ xPosIn,yPosIn };
@@ -1308,6 +1498,7 @@ bool Window::Create(const char* title, int width, int height)
 	glfwSetInputMode(Engine.window, GLFW_STICKY_MOUSE_BUTTONS, GLFW_TRUE); // сохраняет событие кнопки мыши до его опроса через glfwGetMouseButton()
 
 	glfwSetCursorPosCallback(Engine.window, mouseCallback);
+	glfwSetFramebufferSizeCallback(Engine.window, framesizeCallback);
 
 	gladLoadGL(glfwGetProcAddress);
 
@@ -1331,16 +1522,6 @@ void Window::Update()
 {
 	Engine.IsResize = false;
 	glfwPollEvents();
-
-	int width = 0;
-	int height = 0;
-	glfwGetFramebufferSize(Engine.window, &width, &height);
-
-	if (Engine.windowWidth != width || Engine.windowHeight != height)
-		Engine.IsResize = true;
-
-	Engine.windowWidth = std::max(width, 1);
-	Engine.windowHeight = std::max(height, 1);
 
 	MouseState.delta = MouseState.position - MouseState.lastPosition;
 	MouseState.lastPosition = MouseState.position;

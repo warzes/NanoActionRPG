@@ -1,53 +1,5 @@
 ﻿#pragma once
 
-const float INITIAL_POINT_LIGHT_RADIUS = 1.663f;
-const unsigned int LIGHT_GRID_WIDTH = 10;  // point light grid size
-const unsigned int LIGHT_GRID_HEIGHT = 3;  // point light vertical grid height
-
-struct InstanceData {
-	glm::vec4 instanceParam;
-	glm::mat4 instanceMatrix;
-};
-
-// Node: separation < 1.0 will cause lights to penetrate each other, and > 1.0 they will separate (1.0 is just touching)
-void configurePointLights(std::vector<InstanceData>& modelData, float radius, float separation, float yOffset)
-{
-	srand(glfwGetTime());
-	// add some uniformly spaced point lights
-	for (unsigned int lightIndexX = 0; lightIndexX < LIGHT_GRID_WIDTH; lightIndexX++)
-	{
-		for (unsigned int lightIndexZ = 0; lightIndexZ < LIGHT_GRID_WIDTH; lightIndexZ++)
-		{
-			for (unsigned int lightIndexY = 0; lightIndexY < LIGHT_GRID_HEIGHT; lightIndexY++)
-			{
-				float diameter = 2.0f * radius;
-				float xPos = (lightIndexX - (LIGHT_GRID_WIDTH - 1.0f) / 2.0f) * (diameter * separation);
-				float zPos = (lightIndexZ - (LIGHT_GRID_WIDTH - 1.0f) / 2.0f) * (diameter * separation);
-				float yPos = (lightIndexY - (LIGHT_GRID_HEIGHT - 1.0f) / 2.0f) * (diameter * separation) + yOffset;
-				double angle = double(rand()) * 2.0 * M_PI / (double(RAND_MAX));
-				double length = double(rand()) * 0.5 / (double(RAND_MAX));
-				float xOffset = cos(angle) * length;
-				float zOffset = sin(angle) * length;
-				xPos += xOffset;
-				zPos += zOffset;
-				// also calculate random color
-				float rColor = ((rand() % 100) / 200.0f) + 0.5; // between 0.5 and 1.0
-				float gColor = ((rand() % 100) / 200.0f) + 0.5; // between 0.5 and 1.0
-				float bColor = ((rand() % 100) / 200.0f) + 0.5; // between 0.5 and 1.0
-
-				int curLight = lightIndexX * LIGHT_GRID_WIDTH * LIGHT_GRID_HEIGHT + lightIndexZ * LIGHT_GRID_HEIGHT + lightIndexY;
-				glm::mat4 model = glm::mat4(1.0f);
-				model = glm::translate(model, glm::vec3(xPos, yPos, zPos));
-				// now add to list of matrices
-				InstanceData d;
-				d.instanceParam = glm::vec4(rColor, gColor, bColor, radius);
-				d.instanceMatrix = model;
-				modelData.emplace_back(d);
-			}
-		}
-	}
-}
-
 void Example00X()
 {
 	Window::Create("Game", 1600, 900);
@@ -72,15 +24,15 @@ void Example00X()
 	float gLinearAttenuation = 0.09f;
 	float gQuadraticAttenuation = 0.032f;
 	float pointLightIntensity = 0.736f;
-	float pointLightRadius = INITIAL_POINT_LIGHT_RADIUS;
+	float pointLightRadius = UtilsExample::INITIAL_POINT_LIGHT_RADIUS;
 	float pointLightVerticalOffset = 0.636f;
 	float pointLightSeparation = 0.670f;
-	const int totalLights = LIGHT_GRID_WIDTH * LIGHT_GRID_WIDTH * LIGHT_GRID_HEIGHT;
+	const int totalLights = UtilsExample::LIGHT_GRID_WIDTH * UtilsExample::LIGHT_GRID_WIDTH * UtilsExample::LIGHT_GRID_HEIGHT;
 
 	// initialize point lights
 	// lighting info
-	std::vector<InstanceData> instanceData;
-	configurePointLights(instanceData, pointLightRadius, pointLightSeparation, pointLightVerticalOffset);
+	std::vector<UtilsExample::InstanceData> instanceData;
+	UtilsExample::configurePointLights(instanceData, pointLightRadius, pointLightSeparation, pointLightVerticalOffset);
 
 	class SceneLight
 	{
@@ -94,7 +46,7 @@ void Example00X()
 	SceneLight globalLight(glm::vec3(-2.5f, 5.0f, -1.25f), glm::vec3(1.0f, 1.0f, 1.0f), 0.125f);
 
 	UtilsExample::ShadowPass simpleShadowMapFB;
-	simpleShadowMapFB.Create(SHADOW_WIDTH, SHADOW_HEIGHT);
+	simpleShadowMapFB.Create(UtilsExample::SHADOW_WIDTH, UtilsExample::SHADOW_HEIGHT);
 
 
 	UtilsExample::GBufferRef gbuffer{ new UtilsExample::GBuffer(Window::GetWidth(), Window::GetHeight()) };
@@ -123,25 +75,25 @@ void Example00X()
 		// instance data
 		glEnableVertexArrayAttrib(*sphereVao, 2);
 		glVertexArrayAttribBinding(*sphereVao, 2, 1);
-		glVertexArrayAttribFormat(*sphereVao, 2, 4, GL_FLOAT, GL_FALSE, offsetof(InstanceData, instanceParam));
+		glVertexArrayAttribFormat(*sphereVao, 2, 4, GL_FLOAT, GL_FALSE, offsetof(UtilsExample::InstanceData, instanceParam));
 
 		glEnableVertexArrayAttrib(*sphereVao, 3);
 		glVertexArrayAttribBinding(*sphereVao, 3, 1);
-		glVertexArrayAttribFormat(*sphereVao, 3, 4, GL_FLOAT, GL_FALSE, offsetof(InstanceData, instanceMatrix));
+		glVertexArrayAttribFormat(*sphereVao, 3, 4, GL_FLOAT, GL_FALSE, offsetof(UtilsExample::InstanceData, instanceMatrix));
 
 		glEnableVertexArrayAttrib(*sphereVao, 4);
 		glVertexArrayAttribBinding(*sphereVao, 4, 1);
-		glVertexArrayAttribFormat(*sphereVao, 4, 4, GL_FLOAT, GL_FALSE, offsetof(InstanceData, instanceMatrix) + sizeof(float) * 4);
+		glVertexArrayAttribFormat(*sphereVao, 4, 4, GL_FLOAT, GL_FALSE, offsetof(UtilsExample::InstanceData, instanceMatrix) + sizeof(float) * 4);
 
 		glEnableVertexArrayAttrib(*sphereVao, 5);
 		glVertexArrayAttribBinding(*sphereVao, 5, 1);
-		glVertexArrayAttribFormat(*sphereVao, 5, 4, GL_FLOAT, GL_FALSE, offsetof(InstanceData, instanceMatrix) + sizeof(float) * 8);
+		glVertexArrayAttribFormat(*sphereVao, 5, 4, GL_FLOAT, GL_FALSE, offsetof(UtilsExample::InstanceData, instanceMatrix) + sizeof(float) * 8);
 
 		glEnableVertexArrayAttrib(*sphereVao, 6);
 		glVertexArrayAttribBinding(*sphereVao, 6, 1);
-		glVertexArrayAttribFormat(*sphereVao, 6, 4, GL_FLOAT, GL_FALSE, offsetof(InstanceData, instanceMatrix) + sizeof(float) * 12);
+		glVertexArrayAttribFormat(*sphereVao, 6, 4, GL_FLOAT, GL_FALSE, offsetof(UtilsExample::InstanceData, instanceMatrix) + sizeof(float) * 12);
 
-		glVertexArrayVertexBuffer(*sphereVao, 1, *instanceBuffer, 0, sizeof(InstanceData));
+		glVertexArrayVertexBuffer(*sphereVao, 1, *instanceBuffer, 0, sizeof(UtilsExample::InstanceData));
 		glVertexArrayBindingDivisor(*sphereVao, 1, 1);
 
 	}
@@ -201,6 +153,7 @@ void Example00X()
 #pragma region render
 		glEnable(GL_DEPTH_TEST);
 
+		// SHADOW STAGE
 		// 1. render depth of scene to texture (from light's perspective)
 		// TODO: для каждого глобального (прямого) источника света генерить свою карту теней
 		glm::mat4 lightProjection, lightView;

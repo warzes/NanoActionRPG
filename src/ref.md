@@ -1,4 +1,12 @@
-﻿https://www.youtube.com/@justice2free/videos
+﻿https://www.youtube.com/watch?v=7WcxZePx1-o - модульный дом
+
+https://github.com/mollnn/nuEngine
+https://github.com/mharrys/omni
+https://habr.com/ru/articles/259679/
+http://hd-prg.com/myoRendering.html
+
+
+https://www.youtube.com/@justice2free/videos
 	моделирование
 
 https://www.youtube.com/watch?v=K2rs7K4y_sY - Screen Space Reflections
