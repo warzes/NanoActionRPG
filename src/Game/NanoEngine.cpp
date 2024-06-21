@@ -817,6 +817,62 @@ constexpr const char* UniformSpecularColorName = "uSpecularColor";
 constexpr const char* UniformShininessName = "uShininess";
 constexpr const char* UniformRefractiName = "uRefracti";
 
+#pragma region Node
+
+void Node::SetParent(Node* parent)
+{
+	if (m_parent == parent) m_parent = nullptr;
+	else m_parent = parent;
+}
+
+void Node::SetTransform(const Transform&)
+{
+}
+
+void Node::SetSize(const glm::vec3&)
+{
+}
+
+void Node::AddChild(Node* child)
+{
+	auto it = std::find(m_children.begin(), m_children.end(), child);
+	if (it != m_children.end())
+		m_children.erase(it);
+	else
+		m_children.push_back(child);
+}
+
+void Node::Draw()
+{
+	for (auto i : m_children)
+		i->Draw();
+}
+
+Node* Node::GetParent()
+{
+	return m_parent;
+}
+
+std::vector<Node*> Node::GetChildren()
+{
+	return m_children;
+}
+
+glm::vec3 Node::GetSize()
+{
+	return glm::vec3(1.0f);
+}
+
+Transform Node::GetFinalTransform(Node* node, Transform tr)
+{
+	if (node->GetParent())
+		tr = Node::GetFinalTransform(node->GetParent(), node->GetParent()->GetTransform()) * tr;
+	return tr;
+}
+
+#pragma endregion
+
+
 #pragma region Mesh
 
 Mesh::Mesh(const std::vector<MeshVertex>& vertices, const std::vector<uint32_t>& indices, const std::vector<MaterialTexture>& textures, const MaterialProperties& materialProperties)
@@ -1057,6 +1113,100 @@ Animation::State Animation::GetState() const
 
 #pragma endregion
 
+#pragma region Bone
+
+Bone::Bone(int id, const std::string& name, const glm::mat4& offset) : m_id(id), m_name(name)
+{
+	m_offset = offset;
+	m_size = glm::vec3(1.0f);
+}
+
+void Bone::SetTransform(const Transform& tr)
+{
+	m_transform = tr;
+}
+
+void Bone::SetPosition(const glm::vec3& pos)
+{
+	SavePoseAsIdle();
+	m_transform.SetPosition(pos);
+}
+
+void Bone::SetOrientation(const glm::quat& orient)
+{
+	SavePoseAsIdle();
+	m_transform.SetOrientation(orient);
+}
+
+void Bone::SetSize(const glm::vec3& size)
+{
+	m_size = size;
+}
+
+void Bone::Move(const glm::vec3& vec)
+{
+	SavePoseAsIdle();
+	m_transform.SetPosition(m_transform.GetPosition() + vec);
+}
+
+void Bone::Rotate(const glm::quat& quat)
+{
+	SavePoseAsIdle();
+	m_transform.SetOrientation(quat * m_transform.GetOrientation());
+}
+
+void Bone::Expand(const glm::vec3& vec)
+{
+	m_size += vec;
+}
+
+void Bone::SavePoseAsIdle()
+{
+	m_idle = m_transform;
+}
+
+int Bone::GetID()
+{
+	return m_id;
+}
+
+std::string Bone::GetName()
+{
+	return m_name;
+}
+
+glm::vec3 Bone::GetPosition()
+{
+	return m_transform.GetPosition();
+}
+
+glm::quat Bone::GetOrientation()
+{
+	return m_transform.GetOrientation();
+}
+
+glm::vec3 Bone::GetSize()
+{
+	return m_size;
+}
+
+glm::mat4 Bone::GetOffset()
+{
+	return m_offset;
+}
+
+Transform Bone::GetTransform()
+{
+	return m_transform;
+}
+
+Transform Bone::GetIdle()
+{
+	return m_idle;
+}
+
+#pragma endregion
+
 #pragma region Model
 
 Model::Model(const std::string& modelPath, bool flipUV)
@@ -1089,10 +1239,89 @@ std::vector<glm::vec3> Model::GetTriangle() const
 	return Triangle;
 }
 
+std::vector<AnimationRef> Model::GetAnimations() const
+{
+	return m_animations;
+}
+
+std::vector<BoneRef> Model::GetBones() const
+{
+	return m_bones;
+}
+
+std::vector<glm::mat4>& Model::GetPose()
+{
+	return m_pose;
+}
+
 MeshRef Model::operator[](size_t idx)
 {
 	assert(idx < m_meshes.size());
 	return m_meshes[idx];
+}
+
+void Model::SetTransform(const Transform& transform)
+{
+	m_transform = transform;
+}
+
+void Model::SetPosition(const glm::vec3& position)
+{
+	m_transform.SetPosition(position);
+}
+
+void Model::SetOrientation(const glm::quat& orientation)
+{
+	m_transform.SetOrientation(orientation);
+}
+
+void Model::AddChild(Node* child)
+{
+	for (auto i : m_bones)
+		if (i.get() == child)
+		{
+			auto it = std::find(m_children.begin(), m_children.end(), child);
+			if (it != m_children.end())
+			{
+				(*it)->SetParent(nullptr);
+				m_children.erase(it);
+				return;
+			}
+			child->SetParent(this);
+			m_children.push_back(child);
+			return;
+		}
+
+	auto it = std::find(m_children.begin(), m_children.end(), child);
+	if (it != m_children.end())
+	{
+		m_children.erase(it);
+	}
+	else
+	{
+		m_children.push_back(child);
+	}
+}
+
+Transform Model::GetTransform()
+{
+	return m_transform;
+}
+
+glm::vec3 Model::GetPosition()
+{
+	return m_transform.GetPosition();
+}
+
+glm::quat Model::GetOrientation()
+{
+	return m_transform.GetOrientation();
+}
+
+void Model::UpdateAnim()
+{
+	for (auto& i : m_bones)
+		calculatePose(i.get());
 }
 
 void Model::loadAssimpModel(const std::string& modelPath, bool flipUV)
@@ -1114,12 +1343,49 @@ void Model::loadAssimpModel(const std::string& modelPath, bool flipUV)
 	m_directory = modelPath.substr(0, modelPath.find_last_of('/'));
 	loadAnimations(scene);
 	processNode(scene->mRootNode, scene, glm::mat4(1.0));
+	findBoneNodes(scene->mRootNode, m_bones);
 	computeAABB();
+
+	m_pose.resize(64);
+
+	Print("Model " + modelPath + " loaded:\n" +
+		"        Meshes: " + std::to_string(m_meshes.size()) + '\n' +
+		"        Bones: " + std::to_string(m_bones.size() + m_bonesChildren.size()) + '\n' +
+		"        Animations: " + std::to_string(m_animations.size()));
 }
 
 constexpr glm::vec3 toglm(const aiVector3D& vec) { return glm::vec3(vec.x, vec.y, vec.z); }
 constexpr glm::vec2 toglm(const aiVector2D& vec) { return glm::vec2(vec.x, vec.y); }
 constexpr glm::quat toglm(const aiQuaternion& q) { return glm::quat(q.w, q.x, q.y, q.z); }
+
+constexpr glm::mat4 toglm(const aiMatrix4x4& mat)
+{
+	glm::mat4 ret;
+	for (int i = 0; i < 4; i++)
+		for (int j = 0; j < 4; j++)
+			ret[j][i] = mat[i][j];
+	return ret;
+}
+
+std::pair<Transform, glm::vec3> To3DTransform(const glm::mat4& tr)
+{
+	Transform ret;
+	glm::vec3 size;
+
+	glm::vec3 pos, scale, skew;
+	glm::vec4 perspective;
+	glm::quat orient;
+
+	glm::decompose(tr, scale, orient, pos, skew, perspective);
+	orient = glm::conjugate(orient);
+
+	size = { scale.x, scale.y, scale.z };
+
+	ret.SetPosition({ pos.x, pos.y, pos.z });
+	ret.SetOrientation({ orient.x, orient.y, orient.z, orient.w });
+
+	return { ret, size };
+}
 
 void Model::loadAnimations(const aiScene* scene)
 {
@@ -1181,6 +1447,7 @@ MeshRef Model::processMesh(const aiMesh* mesh, const aiScene* scene, const glm::
 	MaterialProperties matProperties;
 	processVertex(mesh, transform, vertices);
 	processIndices(mesh, indices);
+	processBones(mesh, vertices);
 	processTextures(mesh, scene, textures);
 	processMatProperties(mesh, scene, matProperties);
 	return std::make_shared<Mesh>(vertices, indices, textures, matProperties);
@@ -1235,10 +1502,86 @@ void Model::processIndices(const aiMesh* mesh, std::vector<uint32_t>& indices)
 {
 	for (unsigned i = 0; i < mesh->mNumFaces; ++i)
 	{
-		aiFace face = mesh->mFaces[i];
+		auto face = mesh->mFaces[i];
 		for (unsigned k = 0; k < face.mNumIndices; ++k)
 			indices.push_back(face.mIndices[k]);
 	}
+}
+
+void Model::processBones(const aiMesh* mesh, std::vector<MeshVertex>& vertices)
+{
+	for (size_t i = 0; i < mesh->mNumBones; i++)
+	{
+		auto bone = mesh->mBones[i];
+
+		if (m_bonemap.find(bone->mName.C_Str()) == m_bonemap.end())
+			m_bonemap[bone->mName.C_Str()] = { i, toglm(bone->mOffsetMatrix) };
+
+		std::vector<int> nbones;
+		nbones.resize(mesh->mNumVertices, 0);
+		for (size_t j = 0; j < bone->mNumWeights ? 1 : 0; j++)
+		{
+			int id = bone->mWeights[j].mVertexId;
+			float weight = bone->mWeights[j].mWeight;
+			vertices[id].boneIDs[nbones[id]] = i;
+			vertices[id].weights[nbones[id]] = weight;
+			nbones[id]++;
+		}
+	}
+}
+
+void Model::findBoneNodes(aiNode* node, std::vector<BoneRef>& bones)
+{
+	BoneRef tmp = nullptr;
+	if (processBone(node, tmp))
+	{
+		if (tmp)
+		{
+			bones.emplace_back(tmp);
+			AddChild(tmp.get());
+		}
+		return;
+	}
+	for (size_t i = 0; i < node->mNumChildren; i++)
+		findBoneNodes(node->mChildren[i], bones);
+}
+
+bool Model::processBone(aiNode* node, BoneRef& out)
+{
+	if (m_bonemap.find(node->mName.C_Str()) != m_bonemap.end())
+	{
+		auto it = std::find_if(m_bones.begin(), m_bones.end(), [&](auto& b) { return b->GetName() == std::string(node->mName.C_Str()); });
+		if (it != m_bones.end())
+			return false;
+		out = std::make_shared<Bone>(m_bonemap[node->mName.C_Str()].first, node->mName.C_Str(), m_bonemap[node->mName.C_Str()].second);
+		if (!m_animations.empty())
+			if (m_animations[0]->GetKeyframes().find(out->GetName()) != m_animations[0]->GetKeyframes().end())
+			{
+				Keyframe kf = m_animations[0]->GetKeyframes()[out->GetName()];
+				auto pos = kf.positions[0];
+				auto rot = kf.rotations[0];
+				Transform tr;
+				tr.SetPosition({ pos.x, pos.y, pos.z });
+				tr.SetOrientation({ rot.x, rot.y, rot.z, rot.w });
+				out->SetTransform(tr);
+			}
+			else out->SetTransform(To3DTransform(toglm(node->mTransformation)).first);
+
+		out->SavePoseAsIdle();
+
+		for (int i = 0; i < node->mNumChildren; i++)
+		{
+			std::shared_ptr<Bone> child = nullptr;
+			if (processBone(node->mChildren[i], child))
+			{
+				m_bonesChildren.push_back(child);
+				child->SetParent(out.get());
+				out->AddChild(child.get());
+			}
+		}
+		return true;
+	}
+	return false;
 }
 
 void Model::processTextures(const aiMesh* mesh, const aiScene* scene, std::vector<MaterialTexture>& textures)
@@ -1314,6 +1657,31 @@ void Model::computeAABB()
 {
 	for (size_t i = 0; i < m_meshes.size(); ++i)
 		m_bounding.Combine(m_meshes[i]->GetBounding());
+}
+
+void Model::calculatePose(Bone* bone)
+{
+	auto it = std::find_if(m_bones.begin(), m_bones.end(), [&](auto b) { return b.get() == bone; });
+	auto it1 = std::find_if(m_bonesChildren.begin(), m_bonesChildren.end(), [&](auto b) { return b.get() == bone; });
+	if (it == m_bones.end() && it1 == m_bonesChildren.end())
+		return;
+
+	Transform tmp = m_transform;
+	m_transform = Transform{};
+
+	auto finalTransform = Node::GetFinalTransform(bone) * bone->GetTransform();
+
+	glm::mat4 finaltr(1.0);
+	finaltr = glm::translate(finaltr, finalTransform.GetPosition());
+	finaltr = finaltr * glm::toMat4(finalTransform.GetOrientation());
+	finaltr = glm::scale(finaltr, bone->GetSize());
+
+	m_pose[bone->GetID()] = finaltr * bone->GetOffset();
+
+	for (auto child : bone->GetChildren())
+		calculatePose(dynamic_cast<Bone*>(child));
+
+	m_transform = tmp;
 }
 
 #pragma endregion

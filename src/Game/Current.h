@@ -63,6 +63,8 @@ void Example00X()
 	ModelRef model{ new Model("Data/Models/sponza/sponza.obj") };
 	ModelRef model2{ new Model("Data/Models/Dragon.obj") };
 	ModelRef sphereModel{ new Model("Data/Models/Sphere.obj") };
+	ModelRef rabitModel{ new Model("Data/Models/Character.gltf") };
+
 	auto sphereVao = (*sphereModel)[0]->GetVAO();
 	GLBufferRef instanceBuffer{ new GLBuffer(instanceData) };
 	// TODO
@@ -197,6 +199,11 @@ void Example00X()
 					modelScale = glm::scale(modelTranslate, glm::vec3(1.5f));
 					simpleShadowMapFB.program->SetVertexUniform(1, modelScale);
 					sphere->Draw();
+
+					modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(-10.0f, -2.8f, 4.0f));
+					modelScale = glm::scale(modelTranslate, glm::vec3(1.02f));
+					simpleShadowMapFB.program->SetVertexUniform(1, modelScale);
+					rabitModel->Draw(simpleShadowMapFB.program);
 				}
 			}
 		}
@@ -236,6 +243,15 @@ void Example00X()
 			modelScale = glm::scale(modelTranslate, glm::vec3(1.5f));
 			gbuffer->GetProgram()->SetVertexUniform(2, modelScale);
 			sphere->Draw();
+
+			modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(-10.0f, -2.8f, 4.0f));
+			modelScale = glm::scale(modelTranslate, glm::vec3(1.02f));
+			gbuffer->GetProgram()->SetVertexUniform(2, modelScale);
+			
+
+			gbuffer->GetProgram()->SetVertexUniform(4, rabitModel->GetPose());
+			rabitModel->UpdateAnim();
+			rabitModel->Draw(gbuffer->GetProgram());
 		}
 
 		// 3. lighting pass: calculate lighting by iterating over a screen filled quad pixel-by-pixel using the gbuffer's content and shadow map

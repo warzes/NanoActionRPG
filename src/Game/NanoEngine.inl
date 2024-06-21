@@ -165,6 +165,36 @@ inline glm::vec3 Transform::operator*(const glm::vec3& v) const
 	return (m_orientation * v) + m_position;
 }
 
+inline Transform Transform::operator*(const Transform& transform2) const
+{
+	// The following code is equivalent to this
+	//return Transform(mPosition + mOrientation * transform2.mPosition,
+	//                 mOrientation * transform2.mOrientation);
+
+	const float prodX = m_orientation.w * transform2.m_position.x + m_orientation.y * transform2.m_position.z
+		- m_orientation.z * transform2.m_position.y;
+	const float prodY = m_orientation.w * transform2.m_position.y + m_orientation.z * transform2.m_position.x
+		- m_orientation.x * transform2.m_position.z;
+	const float prodZ = m_orientation.w * transform2.m_position.z + m_orientation.x * transform2.m_position.y
+		- m_orientation.y * transform2.m_position.x;
+	const float prodW = -m_orientation.x * transform2.m_position.x - m_orientation.y * transform2.m_position.y
+		- m_orientation.z * transform2.m_position.z;
+
+	return Transform(glm::vec3(
+		m_position.x + m_orientation.w * prodX - prodY * m_orientation.z + prodZ * m_orientation.y - prodW * m_orientation.x,
+		m_position.y + m_orientation.w * prodY - prodZ * m_orientation.x + prodX * m_orientation.z - prodW * m_orientation.y,
+		m_position.z + m_orientation.w * prodZ - prodX * m_orientation.y + prodY * m_orientation.x - prodW * m_orientation.z),
+
+		glm::quat::wxyz(m_orientation.w * transform2.m_orientation.x + transform2.m_orientation.w * m_orientation.x
+			+ m_orientation.y * transform2.m_orientation.z - m_orientation.z * transform2.m_orientation.y,
+			m_orientation.w * transform2.m_orientation.y + transform2.m_orientation.w * m_orientation.y
+			+ m_orientation.z * transform2.m_orientation.x - m_orientation.x * transform2.m_orientation.z,
+			m_orientation.w * transform2.m_orientation.z + transform2.m_orientation.w * m_orientation.z
+			+ m_orientation.x * transform2.m_orientation.y - m_orientation.y * transform2.m_orientation.x,
+			m_orientation.w * transform2.m_orientation.w - m_orientation.x * transform2.m_orientation.x
+			- m_orientation.y * transform2.m_orientation.y - m_orientation.z * transform2.m_orientation.z));
+}
+
 #pragma endregion
 
 #pragma endregion
@@ -230,6 +260,8 @@ inline void GLSeparableShaderProgram::SetUniform(GLint location, const T& value)
 	else if constexpr (std::is_same_v<T, glm::quat>) glProgramUniform4fv(m_handle, location, 1, glm::value_ptr(value));
 	else if constexpr (std::is_same_v<T, glm::mat3>) glProgramUniformMatrix3fv(m_handle, location, 1, GL_FALSE, glm::value_ptr(value));
 	else if constexpr (std::is_same_v<T, glm::mat4>) glProgramUniformMatrix4fv(m_handle, location, 1, GL_FALSE, glm::value_ptr(value));
+	else if constexpr (std::is_same_v<T, std::vector<glm::mat4>>) glProgramUniformMatrix4fv(m_handle, location, value.size(), GL_FALSE, glm::value_ptr(value[0]));
+
 	else Fatal("unsupported type");
 }
 

@@ -205,6 +205,7 @@ public:
 	[[nodiscard]] Transform GetInverse() const;
 
 	glm::vec3 operator*(const glm::vec3& v) const;
+	Transform operator*(const Transform& tr) const;
 
 private:
 	glm::vec3 m_position = glm::vec3(0.0f);
@@ -505,6 +506,32 @@ namespace Renderer
 //==============================================================================
 #pragma region Graphics
 
+class Node
+{
+public:
+	virtual ~Node() = default;
+
+	void SetParent(Node* parent);
+
+	virtual void SetTransform(const Transform& transform);
+	virtual void SetSize(const glm::vec3& size);
+	virtual void AddChild(Node* child);
+
+	virtual void Draw();
+
+	Node* GetParent();
+	std::vector<Node*> GetChildren();
+
+	virtual Transform GetTransform() = 0;
+	virtual glm::vec3 GetSize();
+
+	static Transform GetFinalTransform(Node* node, Transform tr = {});
+
+protected:
+	Node* m_parent = nullptr;
+	std::vector<Node*> m_children;
+};
+
 struct MaterialTexture final
 {
 	GLTexture2DRef texture = nullptr;
@@ -630,8 +657,48 @@ private:
 
 	Clock m_time;
 };
+using AnimationRef = std::shared_ptr<Animation>;
 
-class Model final
+class Bone final : public Node
+{
+public:
+	Bone() = delete;
+	Bone(int id, const std::string& name, const glm::mat4& offset);
+
+	void SetTransform(const Transform& tr) final;
+
+	void SetPosition(const glm::vec3& pos);
+	void SetOrientation(const glm::quat& orient);
+	void SetSize(const glm::vec3& size) final;
+
+	void Move(const glm::vec3& vec);
+	void Rotate(const glm::quat& quat);
+	void Expand(const glm::vec3& vec);
+
+	void SavePoseAsIdle();
+
+	int GetID();
+	std::string GetName();
+
+	glm::vec3 GetPosition();
+	glm::quat GetOrientation();
+	glm::vec3 GetSize() override;
+
+	glm::mat4 GetOffset();
+	Transform GetTransform() override;
+	Transform GetIdle();
+
+private:
+	int m_id = 0;
+	std::string m_name = "";
+	Transform m_transform;
+	Transform m_idle;
+	glm::mat4 m_offset;
+	glm::vec3 m_size;
+};
+using BoneRef = std::shared_ptr<Bone>;
+
+class Model final : public Node
 {
 public:
 	Model() = delete;
@@ -641,8 +708,22 @@ public:
 
 	[[nodiscard]] AABB GetBounding() const;
 	[[nodiscard]] std::vector<glm::vec3> GetTriangle() const;
+	std::vector<AnimationRef> GetAnimations() const;
+	std::vector<BoneRef> GetBones() const;
+	std::vector<glm::mat4>& GetPose();
 
 	[[nodiscard]] MeshRef operator[](size_t idx);
+
+	void SetTransform(const Transform& transform) final;
+	void SetPosition(const glm::vec3& position);
+	void SetOrientation(const glm::quat& orientation);
+	void AddChild(Node* child) final;
+
+	Transform GetTransform() final;
+	glm::vec3 GetPosition();
+	glm::quat GetOrientation();
+
+	void UpdateAnim(); // TODO: временно пока делаю
 
 private:
 	void loadAssimpModel(const std::string& modelPath, bool flipUV);
@@ -651,18 +732,33 @@ private:
 	MeshRef processMesh(const aiMesh* mesh, const aiScene* scene, const glm::mat4& transform);
 	void processVertex(const aiMesh* AiMesh, const glm::mat4& transform, std::vector<MeshVertex>& vertices);
 	void processIndices(const aiMesh* AiMesh, std::vector<uint32_t>& indices);
+	void processBones(const aiMesh* mesh, std::vector<MeshVertex>& vertices);
+	void findBoneNodes(aiNode* node, std::vector<BoneRef>& bones);
+	bool processBone(aiNode* node, BoneRef& out);
 	void processTextures(const aiMesh* AiMesh, const aiScene* scene, std::vector<MaterialTexture>& textures);
 	void loadTextureFromMaterial(aiTextureType textureType, const aiMaterial* mat, std::vector<MaterialTexture>& textures);
 	void processMatProperties(const aiMesh* AiMesh, const aiScene* scene, MaterialProperties& meshMatProperties);
 	void computeAABB();
 
+	void calculatePose(Bone* bone);
+
 	int m_meshCount = -1;
 	std::vector<MaterialTexture> m_loadedTextures;
 	std::vector<MeshRef> m_meshes;
+	// animations data
+	std::unordered_map<std::string, std::pair<int, glm::mat4>> m_bonemap;
+	std::vector<glm::mat4> m_pose; // TODO: вместо вектора массив из 64
+	std::vector<AnimationRef> m_animations;
+	std::vector<BoneRef> m_bones;
+	std::vector<BoneRef> m_bonesChildren;
+
 	std::string m_directory;
 	AABB m_bounding;
 
-	std::vector<std::shared_ptr<Animation>> m_animations;
+	glm::mat4 m_globalInverseTransform;
+
+	Transform m_transform;
+
 };
 using ModelRef = std::shared_ptr<Model>;
 
