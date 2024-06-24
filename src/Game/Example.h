@@ -123,6 +123,9 @@ layout (location = 1) in vec3 aColor;
 layout (location = 2) in vec3 aNormal;
 layout (location = 3) in vec2 aTexCoords;
 layout (location = 4) in vec3 aTangent;
+layout (location = 5) in vec3 aBitangent;
+layout (location = 6) in vec4 ids;
+layout (location = 7) in vec4 weights;
 // ----------- Per instance -----------
 //layout (location = 5) in mat4 aModel; // TODO:
 //layout (location = 8) in int aMaterialIdx;
@@ -139,6 +142,7 @@ out DeferredData
 	vec3 normal;
 	vec2 texCoords;
 	vec3 tangent;
+	vec3 bitangent;
 } outData;
 
 // ------------- Uniform --------------
@@ -146,9 +150,22 @@ layout (location = 0) uniform mat4 uProjectionMatrix;
 layout (location = 1) uniform mat4 uViewMatrix;
 layout (location = 2) uniform mat4 uWorldMatrix;
 
+layout (location = 3) uniform bool bones;
+layout (location = 4) uniform mat4 pose[64];
+
+
 void main()
 {	
-	vec4 worldPosition = uWorldMatrix * vec4(aPosition, 1.0);
+	vec4 pos = vec4(aPosition, 1.0);
+
+	if(bones)
+	{
+		mat4 transform = mat4(0.0);
+		transform += pose[int(ids.x)] * weights.x;
+		pos = transform * pos;
+	}
+
+	vec4 worldPosition = uWorldMatrix * pos;
 	mat3 worldNormal = transpose(inverse(mat3(uWorldMatrix)));
 	vec4 worldTangent = uWorldMatrix * vec4(aTangent, 0.0);
 
@@ -157,6 +174,7 @@ void main()
 	outData.normal = worldNormal * aNormal;
 	outData.texCoords = aTexCoords;
 	outData.tangent = worldTangent.xyz;
+	outData.bitangent = aBitangent;
 
 	gl_Position = uProjectionMatrix * uViewMatrix * worldPosition;
 }
@@ -174,6 +192,7 @@ in DeferredData
 	vec3 normal;
 	vec2 texCoords;
 	vec3 tangent;
+	vec3 bitangent;
 } inData;
 
 layout (location = 0) out vec3 outPosition;

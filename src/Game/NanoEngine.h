@@ -724,6 +724,7 @@ public:
 	glm::quat GetOrientation();
 
 	void UpdateAnim(); // TODO: временно пока делаю
+	void DefaultPose();
 
 private:
 	void loadAssimpModel(const std::string& modelPath, bool flipUV);

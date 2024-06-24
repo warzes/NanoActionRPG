@@ -1324,6 +1324,14 @@ void Model::UpdateAnim()
 		calculatePose(i.get());
 }
 
+void Model::DefaultPose()
+{
+	for (auto& i : m_bones)
+		i->SetTransform(i->GetIdle());
+	for (auto& i : m_bonesChildren)
+		i->SetTransform(i->GetIdle());
+}
+
 void Model::loadAssimpModel(const std::string& modelPath, bool flipUV)
 {
 	unsigned int flags = aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace | aiProcess_LimitBoneWeights;

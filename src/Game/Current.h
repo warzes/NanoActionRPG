@@ -64,6 +64,7 @@ void Example00X()
 	ModelRef model2{ new Model("Data/Models/Dragon.obj") };
 	ModelRef sphereModel{ new Model("Data/Models/Sphere.obj") };
 	ModelRef rabitModel{ new Model("Data/Models/Character.gltf") };
+	rabitModel->DefaultPose();
 
 	auto sphereVao = (*sphereModel)[0]->GetVAO();
 	GLBufferRef instanceBuffer{ new GLBuffer(instanceData) };
@@ -218,6 +219,8 @@ void Example00X()
 			gbuffer->GetProgram()->SetVertexUniform(1, camera.GetViewMatrix());
 			gbuffer->GetProgram()->SetVertexUniform(2, glm::mat4(1.0f));
 
+
+			gbuffer->GetProgram()->SetVertexUniform(3, !model->GetBones().empty());
 			glm::vec4 sponzaSpecular = glm::vec4(0.5f, 0.5f, 0.5f, 0.8f);
 			gbuffer->GetProgram()->SetFragmentUniform(0, sponzaSpecular);
 			model->Draw(gbuffer->GetProgram());
@@ -225,6 +228,7 @@ void Example00X()
 			glm::mat4 modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 0.0f));
 			glm::mat4 modelScale = glm::scale(modelTranslate, glm::vec3(0.2f));
 			gbuffer->GetProgram()->SetVertexUniform(2, modelScale);
+			gbuffer->GetProgram()->SetVertexUniform(3, !model2->GetBones().empty());
 			glm::vec4 modelSpecular = glm::vec4(1.0f, 1.0f, 1.0f, 0.8f);
 			gbuffer->GetProgram()->SetFragmentUniform(0, modelSpecular);
 			model2->Draw(gbuffer->GetProgram());
@@ -232,24 +236,29 @@ void Example00X()
 			modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.65f, 0.0f));
 			modelScale = glm::scale(modelTranslate, glm::vec3(10.0f));
 			gbuffer->GetProgram()->SetVertexUniform(2, modelScale);
+			gbuffer->GetProgram()->SetVertexUniform(3, false);
 			quad->Draw();
 
 			modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.0f, 0.0f));
 			modelScale = glm::scale(modelTranslate, glm::vec3(2.0f));
 			gbuffer->GetProgram()->SetVertexUniform(2, modelScale);
+			gbuffer->GetProgram()->SetVertexUniform(3, false);
 			cube->Draw();
 
 			modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(-6.0f, 0.0f, 0.0f));
 			modelScale = glm::scale(modelTranslate, glm::vec3(1.5f));
 			gbuffer->GetProgram()->SetVertexUniform(2, modelScale);
+			gbuffer->GetProgram()->SetVertexUniform(3, false);
 			sphere->Draw();
 
 			modelTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(-10.0f, -2.8f, 4.0f));
 			modelScale = glm::scale(modelTranslate, glm::vec3(1.02f));
-			gbuffer->GetProgram()->SetVertexUniform(2, modelScale);
-			
+			gbuffer->GetProgram()->SetVertexUniform(2, modelScale);			
 
-			gbuffer->GetProgram()->SetVertexUniform(4, rabitModel->GetPose());
+			gbuffer->GetProgram()->SetVertexUniform(3, !rabitModel->GetBones().empty());
+			if (!rabitModel->GetPose().empty())
+				gbuffer->GetProgram()->SetVertexUniform(4, rabitModel->GetPose());		
+
 			rabitModel->UpdateAnim();
 			rabitModel->Draw(gbuffer->GetProgram());
 		}
