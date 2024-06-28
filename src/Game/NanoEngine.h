@@ -547,10 +547,12 @@ struct MaterialProperties final
 	float refracti = 0.0f;
 };
 
-constexpr int MAX_BONE_INFLUENCE = 4;
+constexpr size_t MAX_NUM_BONES_PER_VERTEX = 4;
 
 struct MeshVertex final
 {
+	void AddBoneData(uint32_t boneID, float weight);
+
 	glm::vec3 position;
 	glm::vec3 color;
 	glm::vec3 normal;
@@ -558,8 +560,8 @@ struct MeshVertex final
 	glm::vec3 tangent;
 	glm::vec3 bitangent;
 
-	int boneIDs[MAX_BONE_INFLUENCE];   // Bone indexes which will influence this vertex
-	float weights[MAX_BONE_INFLUENCE]; // Weights from each bone
+	uint32_t boneIDs[MAX_NUM_BONES_PER_VERTEX] = {}; // Bone indexes which will influence this vertex
+	float weights[MAX_NUM_BONES_PER_VERTEX] = {};    // Weights from each bone
 };
 
 constexpr inline std::vector<AttribFormat> GetMeshVertexFormat();

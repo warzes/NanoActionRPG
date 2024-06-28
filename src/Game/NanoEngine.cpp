@@ -872,6 +872,23 @@ Transform Node::GetFinalTransform(Node* node, Transform tr)
 
 #pragma endregion
 
+#pragma region MeshVertex
+
+void MeshVertex::AddBoneData(uint32_t boneID, float weight)
+{
+	for (uint32_t i = 0; i < MAX_NUM_BONES_PER_VERTEX; i++)
+	{
+		if (weights[i] == 0.0f)
+		{
+			boneIDs[i] = boneID;
+			weights[i] = weight;
+			return;
+		}
+	}
+	Warning("Vertex has more than " + std::to_string(MAX_NUM_BONES_PER_VERTEX) + " bones!");
+}
+
+#pragma endregion
 
 #pragma region Mesh
 
