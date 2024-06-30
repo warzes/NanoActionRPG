@@ -143,6 +143,7 @@
     <ClInclude Include="Current.h" />
     <ClInclude Include="Example.h" />
     <ClInclude Include="NanoEngine.h" />
+    <ClInclude Include="RaycastGame.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="NanoEngine.inl" />

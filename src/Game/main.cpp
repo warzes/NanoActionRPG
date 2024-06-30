@@ -1,6 +1,7 @@
 ﻿#include "NanoEngine.h"
 #include "Example.h"
 #include "Current.h"
+#include "RaycastGame.h"
 
 using namespace physx;
 
@@ -120,7 +121,8 @@ int main(
 	//Example002();
 	//Example003();
 	//Example004();
-	Example00X();
+	//Example00X();
+	RaycastGame();
 
 	return 0;
 

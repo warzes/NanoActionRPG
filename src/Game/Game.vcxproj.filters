@@ -65,6 +65,7 @@
     </ClInclude>
     <ClInclude Include="Example.h" />
     <ClInclude Include="Current.h" />
+    <ClInclude Include="RaycastGame.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="3rdparty">

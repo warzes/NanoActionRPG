@@ -114,6 +114,22 @@ inline bool AABB::Inside(const glm::vec3& point)
 
 #pragma endregion
 
+#pragma region Sphere
+
+inline float Sphere::GetVolume() const
+{
+	return(4.0f / 3.0f * glm::pi<float>()) * (radius * radius * radius);
+}
+
+inline bool Sphere::Inside(const glm::vec3& point)
+{
+	float dist = glm::length2(point - center);
+	return dist < radius * radius;
+}
+
+#pragma endregion
+
+
 #pragma region Transform
 
 inline Transform::Transform(const glm::vec3& position, const glm::mat3& orientation)

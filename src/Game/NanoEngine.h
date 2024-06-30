@@ -159,7 +159,7 @@ void Fatal(const std::string& text);
 	return static_cast<int>(std::floor(std::log2(std::max(width, height)))) + 1;
 }
 
-[[nodiscard]] inline glm::mat4 mat4_cast(const aiMatrix4x4& m)
+[[nodiscard]] inline glm::mat4 MatrixCast(const aiMatrix4x4& m)
 {
 	return glm::transpose(glm::make_mat4(&m.a1));
 }
@@ -182,10 +182,45 @@ public:
 	[[nodiscard]] void Combine(const AABB& anotherAABB);
 	[[nodiscard]] void Combine(const glm::vec3& point);
 	[[nodiscard]] bool Overlaps(const AABB& anotherAABB);
-	[[nodiscard]] bool Inside(const glm::vec3& point);
+	[[nodiscard]] bool Inside(const glm::vec3& point);		
 
 	glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
 	glm::vec3 max = glm::vec3(std::numeric_limits<float>::lowest());
+};
+
+class OBB final
+{
+public:
+	glm::mat4 tm = glm::mat4(1.0f);
+	glm::vec3 halfExtents = glm::vec3(0.0f);
+};
+
+class Plane final
+{
+public:
+	// The form is ax + by + cz + d = 0
+	// where: d = dot(n, p)
+	glm::vec3 n = glm::vec3(0.0f);
+	float d = 0.0f;
+};
+
+class Frustum final
+{
+public:
+	Plane planes[6] = {};
+};
+
+class Sphere final
+{
+public:
+	Sphere() = default;
+
+	[[nodiscard]] float GetVolume() const;
+
+	[[nodiscard]] bool Inside(const glm::vec3& point);
+
+	glm::vec3 center = glm::vec3(0.0f);
+	float radius = 0.0f;
 };
 
 class Transform final

@@ -1449,7 +1449,7 @@ void Model::loadAnimations(const aiScene* scene)
 
 void Model::processNode(aiNode* node, const aiScene* scene, const glm::mat4& parentTransform)
 {
-	glm::mat4 nodeTransform = mat4_cast(node->mTransformation);
+	glm::mat4 nodeTransform = MatrixCast(node->mTransformation);
 	glm::mat4 totalTransform = parentTransform * nodeTransform;
 
 	for (unsigned i = 0; i < node->mNumMeshes; ++i)
