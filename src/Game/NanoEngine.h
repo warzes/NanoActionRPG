@@ -107,11 +107,11 @@ public:
 	template <typename Rep, typename Period>
 	constexpr Time(const std::chrono::duration<Rep, Period>& duration);
 
-	constexpr float AsSeconds() const;
-	constexpr int32_t AsMilliseconds() const;
-	constexpr int64_t AsMicroseconds() const;
+	[[nodiscard]] constexpr float AsSeconds() const;
+	[[nodiscard]] constexpr int32_t AsMilliseconds() const;
+	[[nodiscard]] constexpr int64_t AsMicroseconds() const;
 
-	constexpr std::chrono::microseconds ToDuration() const;
+	[[nodiscard]] constexpr std::chrono::microseconds ToDuration() const;
 	template <typename Rep, typename Period>
 	constexpr operator std::chrono::duration<Rep, Period>() const;
 
@@ -447,6 +447,7 @@ public:
 	[[nodiscard]] bool IsValid() const noexcept { return m_handle != 0; }
 
 	void Bind(GLuint slot);
+	void BindImage(uint32_t index, uint32_t level = 0, bool write = false, std::optional<int> layer = std::nullopt);
 
 private:
 	void createHandle();
@@ -454,6 +455,7 @@ private:
 	void createTexture(GLenum internalFormat, GLenum format, GLenum dataType, GLsizei width, GLsizei height, void* data = nullptr, GLint filter = GL_LINEAR, GLint repeat = GL_REPEAT, const glm::vec4& borderColor = glm::vec4(0.0f), bool generateMipMaps = false);
 
 	GLuint m_handle = 0;
+	GLenum m_internalFormat = 0;
 };
 using GLTexture2DRef = std::shared_ptr<GLTexture2D>;
 

@@ -544,6 +544,19 @@ void GLTexture2D::Bind(GLuint slot)
 	glBindTextureUnit(slot, m_handle);
 }
 
+void GLTexture2D::BindImage(uint32_t index, uint32_t level, bool write, std::optional<int> layer)
+{
+	glBindImageTexture(
+		index,
+		m_handle,
+		level,
+		(bool)layer,
+		layer.value_or(0),
+		write ? GL_READ_WRITE : GL_READ_ONLY,
+		m_internalFormat
+	);
+}
+
 void GLTexture2D::createHandle()
 {
 	glCreateTextures(GL_TEXTURE_2D, 1, &m_handle);
@@ -558,6 +571,8 @@ void GLTexture2D::destroyHandle()
 
 void GLTexture2D::createTexture(GLenum internalFormat, GLenum format, GLenum dataType, GLsizei width, GLsizei height, void* data, GLint filter, GLint repeat, const glm::vec4& borderColor, bool generateMipMaps)
 {
+	m_internalFormat = internalFormat;
+
 	const int maxAnisotropy = 16;
 	int levels = 1;
 	if (generateMipMaps)

@@ -261,6 +261,8 @@ inline void GLSeparableShaderProgram::SetUniform(GLint location, const T& value)
 	}
 	if constexpr (std::is_same_v<T, GLint>) glProgramUniform1i(m_handle, location, value);
 	else if constexpr (std::is_same_v<T, GLuint>) glProgramUniform1ui(m_handle, location, value);
+	else if constexpr (std::is_same_v<T, uint32_t>) glProgramUniform1ui(m_handle, location, value);
+	else if constexpr (std::is_same_v<T, size_t>) glProgramUniform1ui(m_handle, location, value);
 	else if constexpr (std::is_same_v<T, bool>) glProgramUniform1ui(m_handle, location, value);
 	else if constexpr (std::is_same_v<T, GLfloat>) glProgramUniform1f(m_handle, location, value);
 	else if constexpr (std::is_same_v<T, GLdouble>) glProgramUniform1d(m_handle, location, value);
