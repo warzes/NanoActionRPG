@@ -440,7 +440,6 @@ public:
 	GLTexture2D(GLenum internalFormat, GLenum format, GLsizei width, GLsizei height, void* data = nullptr, GLint filter = GL_LINEAR, GLint repeat = GL_REPEAT, bool generateMipMaps = false);
 	GLTexture2D(GLenum internalFormat, GLenum format, GLenum dataType, GLsizei width, GLsizei height, void* data = nullptr, GLint filter = GL_LINEAR, GLint repeat = GL_REPEAT, const glm::vec4& borderColor = glm::vec4(0.0f), bool generateMipMaps = false);
 	GLTexture2D(std::string_view filepath, int comp = STBI_rgb_alpha, bool generateMipMaps = false);
-
 	~GLTexture2D();
 
 	[[nodiscard]] operator GLuint() const noexcept { return m_handle; }
@@ -458,6 +457,29 @@ private:
 	GLenum m_internalFormat = 0;
 };
 using GLTexture2DRef = std::shared_ptr<GLTexture2D>;
+
+class GLTexture2DArray final
+{
+public:
+	GLTexture2DArray(GLenum internalFormat, glm::ivec3 size, size_t levels = 1, GLint filter = GL_LINEAR, GLint repeat = GL_REPEAT);
+	~GLTexture2DArray();
+
+	[[nodiscard]] operator GLuint() const noexcept { return m_handle; }
+	[[nodiscard]] bool IsValid() const noexcept { return m_handle != 0; }
+
+	void Bind(GLuint slot);
+	void BindImage(uint32_t index, uint32_t level = 0, bool write = false, std::optional<int> layer = std::nullopt);
+
+private:
+	void createHandle();
+	void destroyHandle();
+	void createTexture(GLenum internalFormat, GLenum format, GLenum dataType, GLsizei width, GLsizei height, void* data = nullptr, GLint filter = GL_LINEAR, GLint repeat = GL_REPEAT, const glm::vec4& borderColor = glm::vec4(0.0f), bool generateMipMaps = false);
+
+	GLuint m_handle = 0;
+	GLenum m_internalFormat = 0;
+};
+using GLTexture2DArrayRef = std::shared_ptr<GLTexture2DArray>;
+
 
 class GLTextureCube final
 {
