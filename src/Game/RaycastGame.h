@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <iostream>
 
@@ -473,9 +473,9 @@ void main()
 				{2,2,2,2,1,2,2,2,2,2,2,1,2,2,2,5,5,5,5,5,5,5,5,5},
 			};
 
-			for (uint32_t x = 0; x < mapWidth; x += 1)
+			for (uint32_t x = 0; x < mapWidth; x++)
 			{
-				for (uint32_t y = 0; y < mapHeight; y += 1)
+				for (uint32_t y = 0; y < mapHeight; y++)
 				{
 					map[x * mapWidth + y] = tempMap[x][y];
 				}
@@ -772,8 +772,8 @@ void RaycastGame()
 	glm::vec2 dir = currentMap->initialDir;
 	glm::vec2 plane = currentMap->initialPlane;
 
-	auto raycastResultBuffer = std::make_shared<GLShaderStorageBuffer>(10000 * (5 * sizeof(int32_t) + 5 * sizeof(float)));
-	 auto spritecastResultBuffer = std::make_shared<GLShaderStorageBuffer>(currentMap->sprites.size() * (8 * sizeof(int32_t) + 1 * sizeof(float) + 1 * sizeof(uint32_t)));
+	auto raycastResultBuffer = std::make_shared<GLShaderStorageBuffer>(10000 * (5 * sizeof(int32_t) + 5 * sizeof(float))); // sizeof(xdata) * 10000
+	auto spritecastResultBuffer = std::make_shared<GLShaderStorageBuffer>(currentMap->sprites.size() * (8 * sizeof(int32_t) + 1 * sizeof(float) + 1 * sizeof(uint32_t)));
 	auto spritecastInputBuffer = std::make_shared<GLShaderStorageBuffer>(currentMap->sprites.size() * sizeof(raycast::Sprite), GL_DYNAMIC_COPY);
 
 	const std::vector<std::string_view> filepath{
@@ -802,6 +802,16 @@ void RaycastGame()
 
 	Mouse::SetCursorMode(Mouse::CursorMode::Disabled);
 
+	
+	glm::ivec2 frameSize;
+	const float framebufferSize = 600.0f;
+	float aspectRatioScreen = (float)Window::GetWidth() / (float)Window::GetHeight();
+	if (aspectRatioScreen > 1.333)
+		frameSize = { framebufferSize * aspectRatioScreen, framebufferSize };
+	else
+		frameSize = { framebufferSize , framebufferSize * aspectRatioScreen };
+
+
 	while (!Window::ShouldClose())
 	{
 		Window::Update();
@@ -809,11 +819,24 @@ void RaycastGame()
 		if (Window::IsResize())
 		{
 			glViewport(0, 0, Window::GetWidth(), Window::GetHeight());
+			aspectRatioScreen = (float)Window::GetWidth() / (float)Window::GetHeight();
+			if (aspectRatioScreen > 1.333)
+				frameSize = { framebufferSize * aspectRatioScreen, framebufferSize };
+			else
+				frameSize = { framebufferSize , framebufferSize * aspectRatioScreen };
 		}
 
 #pragma region render
-		// ����� ����������� �� �������������� �������
+		// старт рейкастинга на вычислительном шейдере
 		{
+			/*
+			* вычислительный шейдер работает по столбцам (ширина игрового экрана), каждый экземпляр вычисляет значения одного столбца
+			* на входе он получает текстуру карты в виде uimage2D (для того чтобы можно было обращаться к xy а не uv)
+			* на выходе выдает данные в SSBO raycastResultBuffer
+			* также принимает юниформы - позицию игрока, направление его взгляда и плоскость направления, а также размер игрового экрана
+			* TODO: ssbo буфер содержит 10000 элементов, где каждый элемент - это столбец. то есть максимальная ширина экрана - 10000 пикселей. но мне не нужна такая высота, возможно сократить до 4000.
+			*/
+
 			currentMap->texture->BindImage(1);
 			raycastResultBuffer->BindBase(2);
 
@@ -821,11 +844,11 @@ void RaycastGame()
 			raycasterComputeProgram->SetComputeUniform(1, pos);
 			raycasterComputeProgram->SetComputeUniform(2, dir);
 			raycasterComputeProgram->SetComputeUniform(3, plane);
-			raycasterComputeProgram->SetComputeUniform(4, glm::ivec2(Window::GetWidth(), Window::GetHeight())); // TODO: only resize window events
-			glDispatchCompute(Window::GetWidth(), 1, 1);
+			raycasterComputeProgram->SetComputeUniform(4, frameSize); // TODO: only resize window events
+			glDispatchCompute(frameSize.x, 1, 1);
 		}
 
-		// ����� ������� �������� �� �������������� �������
+		// старт рендера спрайтов на вычислительном шейдере
 		{
 			spritecastInputBuffer->BindBase(1);
 			spritecastResultBuffer->BindBase(2);
@@ -834,7 +857,7 @@ void RaycastGame()
 			spritecasterComputeProgram->SetComputeUniform(1, pos);
 			spritecasterComputeProgram->SetComputeUniform(2, dir);
 			spritecasterComputeProgram->SetComputeUniform(3, plane);
-			spritecasterComputeProgram->SetComputeUniform(4, glm::ivec2(Window::GetWidth(), Window::GetHeight())); // TODO: only resize window events
+			spritecasterComputeProgram->SetComputeUniform(4, frameSize); // TODO: only resize window events
 			glDispatchCompute(currentMap->sprites.size(), 1, 1);
 		}
 
@@ -842,17 +865,17 @@ void RaycastGame()
 		glClearColor(0.0f, 0.2f, 0.4f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		//�������� ���������� ������ �������������� ��������
+		//ожидание завершения работы вычислительных шейдеров
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-		// ��������� ���������� �� ����� ����� ���������� ������
+		// отрисовка результата на экран через пиксельный шейдер
 		{
 			raycasterDrawProgram->Bind();
 			textures->BindImage(1, 0, false, 0);
 			raycastResultBuffer->BindBase(2);
 			spritecastResultBuffer->BindBase(3);
 
-			raycasterDrawProgram->SetFragmentUniform(1, glm::ivec2(Window::GetWidth(), Window::GetHeight())); // TODO: only resize window events
+			raycasterDrawProgram->SetFragmentUniform(1, frameSize); // TODO: only resize window events
 			raycasterDrawProgram->SetFragmentUniform(2, pos);
 			raycasterDrawProgram->SetFragmentUniform(3, sortedSprites.size());
 			raycasterDrawProgram->SetFragmentUniform(4, glm::vec4(0.f, 0.f, 0.f, 3.0f));
@@ -865,8 +888,8 @@ void RaycastGame()
 #pragma region imgui
 		IMGUI::Update();
 		{
-			ImGui::Begin((const char*)u8"����");
-			ImGui::Text((const char*)u8"Test/����/%s", u8"���� 2");
+			ImGui::Begin((const char*)u8"Тест");
+			ImGui::Text((const char*)u8"Test/Тест/%s", u8"тест 2");
 			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0 / double(ImGui::GetIO().Framerate), double(ImGui::GetIO().Framerate));
 			ImGui::End();
 			IMGUI::Draw();
