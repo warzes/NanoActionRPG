@@ -1187,22 +1187,18 @@ static Texture generateTextures() {
 
 }
 
-
 void RaycastGame()
 {
 	Window::Create("Game", 1600, 900);
 	Renderer::Init();
 	IMGUI::Init();
 
-	float lastFrameTime = static_cast<float>(glfwGetTime());
 	glDisable(GL_DEPTH_TEST);
 	GLVertexArrayRef VAOEmpty{ new GLVertexArray };
 
-	GLProgramPipelineRef raycasterComputeProgram = std::make_shared<GLProgramPipeline>(raycast::raycasterShader);
-
-	GLProgramPipelineRef spritecasterComputeProgram = std::make_shared<GLProgramPipeline>(raycast::spritecasterShader);
-
-	GLProgramPipelineRef raycasterDrawProgram = std::make_shared<GLProgramPipeline>(raycast::vertexShader, raycast::raycasterDrawerShader);
+	auto raycasterComputeProgram = std::make_shared<GLProgramPipeline>(raycast::raycasterShader);
+	auto spritecasterComputeProgram = std::make_shared<GLProgramPipeline>(raycast::spritecasterShader);
+	auto raycasterDrawProgram = std::make_shared<GLProgramPipeline>(raycast::vertexShader, raycast::raycasterDrawerShader);
 
 	auto currentMap = raycast::Map::Load();
 
@@ -1231,7 +1227,6 @@ void RaycastGame()
 
 	auto glTextures = raycast::generateTextures();
 
-	// sorted sprites list
 	std::vector<raycast::Sprite> sortedSprites(currentMap->sprites);
 
 	double previousTime = glfwGetTime() - 1.0 / 60.0;
@@ -1240,14 +1235,10 @@ void RaycastGame()
 
 	glm::vec2 mouseDirection(0, 0);
 
+	Mouse::SetCursorMode(Mouse::CursorMode::Disabled);
+
 	while (!Window::ShouldClose())
 	{
-#pragma region deltatime
-		float currentFrame = static_cast<float>(glfwGetTime());
-		float deltaTime = currentFrame - lastFrameTime;
-		lastFrameTime = currentFrame;
-#pragma endregion
-
 		Window::Update();
 
 		if (Window::IsResize())
@@ -1256,12 +1247,9 @@ void RaycastGame()
 		}
 
 #pragma region render
-		// start computing rays
+		// старт рейкастинга на вычислительном шейдере
 		{
-			// note: binds the texture into the computer shader
 			currentMap->texture->BindImage(1);
-
-			// note: binds the shared storage into the computer shader
 			raycastResultBuffer.bindBase(2);
 
 			raycasterComputeProgram->Bind();
@@ -1272,7 +1260,7 @@ void RaycastGame()
 			glDispatchCompute(Window::GetWidth(), 1, 1);
 		}
 
-		// start computing sprites positions and sizes
+		// старт рендера спрайтов на вычислительном шейдере
 		{
 			spritecastInputBuffer.bindBase(1);
 			spritecastResultBuffer.bindBase(2);
@@ -1289,13 +1277,12 @@ void RaycastGame()
 		glClearColor(0.0f, 0.2f, 0.4f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		//wait until computer shaders finish
+		//ожидание завершения работы вычислительных шейдеров
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-		// draw the raycaster result to the screen using the drawing shader also draws sprites
+		// отрисовка результата на экран через пиксельный шейдер
 		{
 			raycasterDrawProgram->Bind();
-			// texture arrays are layered
 			glTextures.bindImage(1, 0, false, 0);
 			raycastResultBuffer.bindBase(2);
 			spritecastResultBuffer.bindBase(3);
@@ -1378,7 +1365,8 @@ void RaycastGame()
 		}
 
 		// update sprites order depending on player's position
-		if (currentTime - lastFpsTick >= 1 || !initialSpriteFill) {
+		if (currentTime - lastFpsTick >= 1 || !initialSpriteFill)
+		{
 			initialSpriteFill = true;
 			// sort sprites
 			std::sort(sortedSprites.begin(), sortedSprites.end(), [pos](auto& a, auto& b) {
