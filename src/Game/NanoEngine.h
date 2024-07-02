@@ -461,19 +461,18 @@ using GLTexture2DRef = std::shared_ptr<GLTexture2D>;
 class GLTexture2DArray final
 {
 public:
-	GLTexture2DArray(GLenum internalFormat, glm::ivec3 size, size_t levels = 1, GLint filter = GL_LINEAR, GLint repeat = GL_REPEAT);
+	GLTexture2DArray(const std::vector<std::string_view>& filepath, GLenum internalFormat, glm::ivec3 size, int comp = STBI_rgb_alpha, size_t levels = 1, GLint filter = GL_LINEAR, GLint repeat = GL_REPEAT);
 	~GLTexture2DArray();
+
+	void BindImage(uint32_t index, uint32_t level = 0, bool write = false, std::optional<int> layer = std::nullopt);
 
 	[[nodiscard]] operator GLuint() const noexcept { return m_handle; }
 	[[nodiscard]] bool IsValid() const noexcept { return m_handle != 0; }
 
-	void Bind(GLuint slot);
-	void BindImage(uint32_t index, uint32_t level = 0, bool write = false, std::optional<int> layer = std::nullopt);
-
 private:
 	void createHandle();
 	void destroyHandle();
-	void createTexture(GLenum internalFormat, GLenum format, GLenum dataType, GLsizei width, GLsizei height, void* data = nullptr, GLint filter = GL_LINEAR, GLint repeat = GL_REPEAT, const glm::vec4& borderColor = glm::vec4(0.0f), bool generateMipMaps = false);
+	void fillSubImage(int level, glm::ivec3 offset, glm::ivec3 size, GLenum format, GLenum dataType, const void* data);
 
 	GLuint m_handle = 0;
 	GLenum m_internalFormat = 0;

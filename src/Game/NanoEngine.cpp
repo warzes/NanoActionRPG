@@ -606,6 +606,72 @@ void GLTexture2D::createTexture(GLenum internalFormat, GLenum format, GLenum dat
 
 #pragma endregion
 
+#pragma region GLTexture2DArray
+
+GLTexture2DArray::GLTexture2DArray(const std::vector<std::string_view>& filepath, GLenum internalFormat, glm::ivec3 size, int comp, size_t levels, GLint filter, GLint repeat)
+{
+	createHandle();
+	m_internalFormat = internalFormat;
+	glTextureStorage3D(m_handle, levels, internalFormat, size.x, size.y, size.z);
+
+	for (size_t i = 0; i < size.z; i++)
+	{
+		const auto& path = filepath[i];
+		int width;
+		int height;
+		int components;
+		stbi_uc* data = stbi_load(path.data(), &width, &height, &components, comp);
+
+		fillSubImage(
+			0,
+			{ 0, 0, i },
+			{ width, height, 1 },
+			GL_RGB,
+			GL_UNSIGNED_BYTE,
+			data
+		);
+
+		stbi_image_free(data);
+	}
+}
+
+GLTexture2DArray::~GLTexture2DArray()
+{
+	destroyHandle();
+}
+
+void GLTexture2DArray::BindImage(uint32_t index, uint32_t level, bool write, std::optional<int> layer)
+{
+	glBindImageTexture(
+		index,
+		m_handle,
+		level,
+		(bool)layer,
+		layer.value_or(0),
+		write ? GL_READ_WRITE : GL_READ_ONLY,
+		m_internalFormat
+	);
+}
+
+void GLTexture2DArray::createHandle()
+{
+	glCreateTextures(GL_TEXTURE_2D_ARRAY, 1, &m_handle);
+}
+
+void GLTexture2DArray::destroyHandle()
+{
+	if (m_handle != 0)
+		glDeleteTextures(1, &m_handle);
+	m_handle = 0;
+}
+
+void GLTexture2DArray::fillSubImage(int level, glm::ivec3 offset, glm::ivec3 size, GLenum format, GLenum dataType, const void* data)
+{
+	glTextureSubImage3D(m_handle, level, offset.x, offset.y, offset.z, size.x, size.y, size.z, format, dataType, data);
+}
+
+#pragma endregion
+
 #pragma region GLTextureCube
 
 GLTextureCube::GLTextureCube(const std::array<std::string_view, 6>& filepath, int comp)

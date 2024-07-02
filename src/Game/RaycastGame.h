@@ -412,779 +412,527 @@ void main()
 )";
 #pragma endregion
 
-struct Sprite 
-{
-	inline operator glm::vec2()
+	struct Sprite
 	{
-		return glm::vec2(x, y);
-	}
+		inline operator glm::vec2()
+		{
+			return glm::vec2(x, y);
+		}
 
-	float x;
-	float y;
-	uint32_t texture;
-	int32_t uDiv;
-	int32_t vDiv;
-	float vMove;
-};
+		float x;
+		float y;
+		uint32_t texture;
+		int32_t uDiv;
+		int32_t vDiv;
+		float vMove;
+	};
 
-class Map
-{
-public:
-	inline uint8_t& At(size_t x, size_t y) 
+	class Map
 	{
-		return data[x * size.x + y];
-	}
+	public:
+		inline uint8_t& At(size_t x, size_t y)
+		{
+			return data[x * size.x + y];
+		}
 
-	void Destroy()
-	{
-		delete[] data;
-	}
+		void Destroy()
+		{
+			delete[] data;
+		}
 
-	static std::optional<Map> Load()
-	{
-		uint32_t mapWidth = 24;
-		uint32_t mapHeight = 24;
-		uint8_t* map = new uint8_t[mapWidth * mapHeight];
+		static std::optional<Map> Load()
+		{
+			uint32_t mapWidth = 24;
+			uint32_t mapHeight = 24;
+			uint8_t* map = new uint8_t[mapWidth * mapHeight];
 
-		std::vector<std::vector<uint8_t>> tempMap = {
-			{8,8,8,8,8,8,8,8,8,8,8,4,4,6,4,4,6,4,6,4,4,4,6,4},
-			{8,0,0,0,0,0,0,0,0,0,8,4,0,0,0,0,0,0,0,0,0,0,0,4},
-			{8,0,3,3,0,0,0,0,0,8,8,4,0,0,0,0,0,0,0,0,0,0,0,6},
-			{8,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6},
-			{8,0,3,3,0,0,0,0,0,8,8,4,0,0,0,0,0,0,0,0,0,0,0,4},
-			{8,0,0,0,0,0,0,0,0,0,8,4,0,0,0,0,0,6,6,6,0,6,4,6},
-			{8,8,8,8,0,8,8,8,8,8,8,4,4,4,4,4,4,6,0,0,0,0,0,6},
-			{7,7,7,7,0,7,7,7,7,0,8,0,8,0,8,0,8,4,0,4,0,6,0,6},
-			{7,7,0,0,0,0,0,0,7,8,0,8,0,8,0,8,8,6,0,0,0,0,0,6},
-			{7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,6,0,0,0,0,0,4},
-			{7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,6,0,6,0,6,0,6},
-			{7,7,0,0,0,0,0,0,7,8,0,8,0,8,0,8,8,6,4,6,0,6,6,6},
-			{7,7,7,7,0,7,7,7,7,8,8,4,0,6,8,4,8,3,3,3,0,3,3,3},
-			{2,2,2,2,0,2,2,2,2,4,6,4,0,0,6,0,6,3,0,0,0,0,0,3},
-			{2,2,0,0,0,0,0,2,2,4,0,0,0,0,0,0,4,3,0,0,0,0,0,3},
-			{2,0,0,0,0,0,0,0,2,4,0,0,0,0,0,0,4,3,0,0,0,0,0,3},
-			{1,0,0,0,0,0,0,0,1,4,4,4,4,4,6,0,6,3,3,0,0,0,3,3},
-			{2,0,0,0,0,0,0,0,2,2,2,1,2,2,2,6,6,0,0,5,0,5,0,5},
-			{2,2,0,0,0,0,0,2,2,2,0,0,0,2,2,0,5,0,5,0,0,0,5,5},
-			{2,0,0,0,0,0,0,0,2,0,0,0,0,0,2,5,0,5,0,5,0,5,0,5},
-			{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5},
-			{2,0,0,0,0,0,0,0,2,0,0,0,0,0,2,5,0,5,0,5,0,5,0,5},
-			{2,2,0,0,0,0,0,2,2,2,0,0,0,2,2,0,5,0,5,0,0,0,5,5},
-			{2,2,2,2,1,2,2,2,2,2,2,1,2,2,2,5,5,5,5,5,5,5,5,5},
+			std::vector<std::vector<uint8_t>> tempMap = {
+				{8,8,8,8,8,8,8,8,8,8,8,4,4,6,4,4,6,4,6,4,4,4,6,4},
+				{8,0,0,0,0,0,0,0,0,0,8,4,0,0,0,0,0,0,0,0,0,0,0,4},
+				{8,0,3,3,0,0,0,0,0,8,8,4,0,0,0,0,0,0,0,0,0,0,0,6},
+				{8,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6},
+				{8,0,3,3,0,0,0,0,0,8,8,4,0,0,0,0,0,0,0,0,0,0,0,4},
+				{8,0,0,0,0,0,0,0,0,0,8,4,0,0,0,0,0,6,6,6,0,6,4,6},
+				{8,8,8,8,0,8,8,8,8,8,8,4,4,4,4,4,4,6,0,0,0,0,0,6},
+				{7,7,7,7,0,7,7,7,7,0,8,0,8,0,8,0,8,4,0,4,0,6,0,6},
+				{7,7,0,0,0,0,0,0,7,8,0,8,0,8,0,8,8,6,0,0,0,0,0,6},
+				{7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,6,0,0,0,0,0,4},
+				{7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,6,0,6,0,6,0,6},
+				{7,7,0,0,0,0,0,0,7,8,0,8,0,8,0,8,8,6,4,6,0,6,6,6},
+				{7,7,7,7,0,7,7,7,7,8,8,4,0,6,8,4,8,3,3,3,0,3,3,3},
+				{2,2,2,2,0,2,2,2,2,4,6,4,0,0,6,0,6,3,0,0,0,0,0,3},
+				{2,2,0,0,0,0,0,2,2,4,0,0,0,0,0,0,4,3,0,0,0,0,0,3},
+				{2,0,0,0,0,0,0,0,2,4,0,0,0,0,0,0,4,3,0,0,0,0,0,3},
+				{1,0,0,0,0,0,0,0,1,4,4,4,4,4,6,0,6,3,3,0,0,0,3,3},
+				{2,0,0,0,0,0,0,0,2,2,2,1,2,2,2,6,6,0,0,5,0,5,0,5},
+				{2,2,0,0,0,0,0,2,2,2,0,0,0,2,2,0,5,0,5,0,0,0,5,5},
+				{2,0,0,0,0,0,0,0,2,0,0,0,0,0,2,5,0,5,0,5,0,5,0,5},
+				{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5},
+				{2,0,0,0,0,0,0,0,2,0,0,0,0,0,2,5,0,5,0,5,0,5,0,5},
+				{2,2,0,0,0,0,0,2,2,2,0,0,0,2,2,0,5,0,5,0,0,0,5,5},
+				{2,2,2,2,1,2,2,2,2,2,2,1,2,2,2,5,5,5,5,5,5,5,5,5},
+			};
+
+			for (uint32_t x = 0; x < mapWidth; x += 1)
+			{
+				for (uint32_t y = 0; y < mapHeight; y += 1)
+				{
+					map[x * mapWidth + y] = tempMap[x][y];
+				}
+			}
+
+			glm::vec2 initialPos(22.0f, 11.5f);
+			glm::vec2 initialDir(-1.f, 0.f);
+			glm::vec2 initialPlane(0.0f, 0.666666666666f);
+
+			std::cout << "  > Loading sprites data" << std::endl;
+			std::vector<Sprite> sprites;
+
+			// green light in front of playerstart
+			{
+				Sprite sprite =
+				{
+					20.5,
+					11.5,
+					10,
+					1,
+					1,
+					0.0f,
+				};
+				sprites.push_back(sprite);
+			}
+			// green lights in every room
+			{
+				Sprite sprite =
+				{
+					18.5,
+					4.5,
+					10,
+					1,
+					1,
+					0.0f,
+				};
+				sprites.push_back(sprite);
+			}
+			{
+				Sprite sprite =
+				{
+					10.0,
+					4.5,
+					10,
+					1,
+					1,
+					0.0f,
+				};
+				sprites.push_back(sprite);
+			}
+			{
+				Sprite sprite =
+				{
+					10.0,
+					12.5,
+					10,
+					1,
+					1,
+					0.0f,
+				};
+				sprites.push_back(sprite);
+			}
+			{
+				Sprite sprite =
+				{
+					3.5,
+					6.5,
+					10,
+					1,
+					1,
+					0.0f,
+				};
+				sprites.push_back(sprite);
+			}
+			{
+				Sprite sprite =
+				{
+					3.5,
+					20.5,
+					10,
+					1,
+					1,
+					0.0f,
+				};
+				sprites.push_back(sprite);
+			}
+			{
+				Sprite sprite =
+				{
+					3.5,
+					14.5,
+					10,
+					1,
+					1,
+					0.0f,
+				};
+				sprites.push_back(sprite);
+			}
+			{
+				Sprite sprite =
+				{
+					14.5,
+					20.5,
+					10,
+					1,
+					1,
+					0.0f,
+				};
+				sprites.push_back(sprite);
+			}
+			// row of pillars in front of wall: fisheye test
+			{
+				Sprite sprite =
+				{
+					18.5,
+					10.5,
+					9,
+					1,
+					1,
+					0.0f,
+				};
+				sprites.push_back(sprite);
+			}
+			{
+				Sprite sprite =
+				{
+					18.5,
+					11.5,
+					9,
+					1,
+					1,
+					0.0f,
+				};
+				sprites.push_back(sprite);
+			}
+			{
+				Sprite sprite =
+				{
+					18.5,
+					12.5,
+					9,
+					1,
+					1,
+					0.0f,
+				};
+				sprites.push_back(sprite);
+			}
+			// some barrels around the map
+			{
+				Sprite sprite =
+				{
+					21.5,
+					1.5,
+					8,
+					1,
+					1,
+					0.0f,
+				};
+				sprites.push_back(sprite);
+			}
+			{
+				Sprite sprite =
+				{
+					15.5,
+					1.5,
+					8,
+					1,
+					1,
+					0.0f,
+				};
+				sprites.push_back(sprite);
+			}
+			{
+				Sprite sprite =
+				{
+					16.0,
+					1.8,
+					8,
+					1,
+					1,
+					0.0f,
+				};
+				sprites.push_back(sprite);
+			}
+			{
+				Sprite sprite =
+				{
+					16.2,
+					1.2,
+					8,
+					1,
+					1,
+					0.0f,
+				};
+				sprites.push_back(sprite);
+			}
+			{
+				Sprite sprite =
+				{
+					3.5,
+					2.5,
+					8,
+					1,
+					1,
+					0.0f,
+				};
+				sprites.push_back(sprite);
+			}
+			{
+				Sprite sprite =
+				{
+					9.5,
+					15.5,
+					8,
+					1,
+					1,
+					0.0f,
+				};
+				sprites.push_back(sprite);
+			}
+			{
+				Sprite sprite =
+				{
+					10.0,
+					15.1,
+					8,
+					1,
+					1,
+					0.0f,
+				};
+				sprites.push_back(sprite);
+			}
+			{
+				Sprite sprite =
+				{
+					10.5,
+					15.8,
+					8,
+					1,
+					1,
+					0.0f,
+				};
+				sprites.push_back(sprite);
+			}
+
+			std::variant<uint32_t, glm::vec3> floor, ceil;
+			floor = 3u;
+			ceil = 3u;
+
+			std::cout << "  > Loading map texture" << std::endl;
+			Map mapData{
+				map,
+				glm::uvec2(mapWidth, mapHeight),
+				floor,
+				ceil,
+				initialPos,
+				initialDir,
+				initialPlane,
+				sprites,
+				std::make_shared<GLTexture2D>(GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, mapWidth, mapHeight, map, GL_NEAREST, GL_REPEAT),
+			};
+
+			return mapData;
+		}
+
+		uint8_t* data;
+		glm::uvec2 size;
+		std::variant<uint32_t, glm::vec3> floor;
+		std::variant<uint32_t, glm::vec3> ceil;
+		glm::vec2 initialPos;
+		glm::vec2 initialDir;
+		glm::vec2 initialPlane;
+		std::vector<Sprite> sprites;
+		GLTexture2DRef texture;
+	};
+
+	class Buffer {
+	public:
+		enum Type {
+			ArrayBuffer,
+			ElementArrayBuffer,
+			ShaderStorageBuffer,
 		};
 
-		for (uint32_t x = 0; x < mapWidth; x += 1)
-		{
-			for (uint32_t y = 0; y < mapHeight; y += 1)
-			{
-				map[x * mapWidth + y] = tempMap[x][y];
+		enum Usage {
+			StreamDraw,
+			StreamRead,
+			StreamCopy,
+			StaticDraw,
+			StaticRead,
+			StaticCopy,
+			DynamicDraw,
+			DynamicRead,
+			DynamicCopy,
+		};
+
+	private:
+		size_t bufferSize;
+		void* data = nullptr;
+		Type type;
+		Usage usage = StreamCopy;
+
+		friend class BufferGeometry;
+
+		void build();
+
+	protected:
+		uint32_t buffer = 0;
+
+	public:
+		Buffer(Type type, Usage usage = StreamCopy) : type(type), usage(usage) {}
+
+		Buffer(Type type, size_t size, Usage usage = StreamCopy) : Buffer(type, usage) {
+			bufferSize = size;
+		}
+
+		template<typename DataType, size_t size>
+		Buffer(Type type, const DataType data[size], Usage usage = StreamCopy) : Buffer(type, size * sizeof(DataType), usage) {
+			this->data = malloc(bufferSize);
+			memcpy(this->data, data, bufferSize);
+		}
+
+		template<typename DataType>
+		Buffer(Type type, const DataType* data, size_t count, Usage usage = StaticCopy) : Buffer(type, count * sizeof(DataType), usage) {
+			this->data = malloc(bufferSize);
+			memcpy(this->data, data, bufferSize);
+		}
+
+		Buffer(const Buffer& o) {
+			bufferSize = o.bufferSize;
+			data = nullptr;
+			type = o.type;
+			usage = o.usage;
+			buffer = 0;
+
+			if (o.data) {
+				data = malloc(o.bufferSize);
+				memcpy(data, o.data, o.bufferSize);
 			}
 		}
 
-		glm::vec2 initialPos(22.0f, 11.5f);
-		glm::vec2 initialDir(-1.f, 0.f);
-		glm::vec2 initialPlane(0.0f, 0.666666666666f);
+		~Buffer();
 
-		std::cout << "  > Loading sprites data" << std::endl;
-		std::vector<Sprite> sprites;
+		void bind();
+		void bindBase(uint32_t index);
+		void setData(const void* data, size_t size);
+		void mapWritableBuffer(const std::function<void(void*)>& func);
+		void mapBuffer(const std::function<void(const void* const)>& func);
 
-		// green light in front of playerstart
-		{
-			Sprite sprite =
-			{
-				20.5,
-				11.5,
-				10,
-				1,
-				1,
-				0.0f,
-			};
-			sprites.push_back(sprite);
-		}
-		// green lights in every room
-		{
-			Sprite sprite =
-			{
-				18.5,
-				4.5,
-				10,
-				1,
-				1,
-				0.0f,
-			};
-			sprites.push_back(sprite);
-		}
-		{
-			Sprite sprite =
-			{
-				10.0,
-				4.5,
-				10,
-				1,
-				1,
-				0.0f,
-			};
-			sprites.push_back(sprite);
-		}
-		{
-			Sprite sprite =
-			{
-				10.0,
-				12.5,
-				10,
-				1,
-				1,
-				0.0f,
-			};
-			sprites.push_back(sprite);
-		}
-		{
-			Sprite sprite =
-			{
-				3.5,
-				6.5,
-				10,
-				1,
-				1,
-				0.0f,
-			};
-			sprites.push_back(sprite);
-		}
-		{
-			Sprite sprite =
-			{
-				3.5,
-				20.5,
-				10,
-				1,
-				1,
-				0.0f,
-			};
-			sprites.push_back(sprite);
-		}
-		{
-			Sprite sprite =
-			{
-				3.5,
-				14.5,
-				10,
-				1,
-				1,
-				0.0f,
-			};
-			sprites.push_back(sprite);
-		}
-		{
-			Sprite sprite =
-			{
-				14.5,
-				20.5,
-				10,
-				1,
-				1,
-				0.0f,
-			};
-			sprites.push_back(sprite);
-		}
-		// row of pillars in front of wall: fisheye test
-		{
-			Sprite sprite =
-			{
-				18.5,
-				10.5,
-				9,
-				1,
-				1,
-				0.0f,
-			};
-			sprites.push_back(sprite);
-		}
-		{
-			Sprite sprite =
-			{
-				18.5,
-				11.5,
-				9,
-				1,
-				1,
-				0.0f,
-			};
-			sprites.push_back(sprite);
-		}
-		{
-			Sprite sprite =
-			{
-				18.5,
-				12.5,
-				9,
-				1,
-				1,
-				0.0f,
-			};
-			sprites.push_back(sprite);
-		}
-		// some barrels around the map
-		{
-			Sprite sprite =
-			{
-				21.5,
-				1.5,
-				8,
-				1,
-				1,
-				0.0f,
-			};
-			sprites.push_back(sprite);
-		}
-		{
-			Sprite sprite =
-			{
-				15.5,
-				1.5,
-				8,
-				1,
-				1,
-				0.0f,
-			};
-			sprites.push_back(sprite);
-		}
-		{
-			Sprite sprite =
-			{
-				16.0,
-				1.8,
-				8,
-				1,
-				1,
-				0.0f,
-			};
-			sprites.push_back(sprite);
-		}
-		{
-			Sprite sprite =
-			{
-				16.2,
-				1.2,
-				8,
-				1,
-				1,
-				0.0f,
-			};
-			sprites.push_back(sprite);
-		}
-		{
-			Sprite sprite =
-			{
-				3.5,
-				2.5,
-				8,
-				1,
-				1,
-				0.0f,
-			};
-			sprites.push_back(sprite);
-		}
-		{
-			Sprite sprite =
-			{
-				9.5,
-				15.5,
-				8,
-				1,
-				1,
-				0.0f,
-			};
-			sprites.push_back(sprite);
-		}
-		{
-			Sprite sprite =
-			{
-				10.0,
-				15.1,
-				8,
-				1,
-				1,
-				0.0f,
-			};
-			sprites.push_back(sprite);
-		}
-		{
-			Sprite sprite =
-			{
-				10.5,
-				15.8,
-				8,
-				1,
-				1,
-				0.0f,
-			};
-			sprites.push_back(sprite);
+		void _writeContentsToFile(const char* fileName);
+
+		template<typename DataType, size_t size>
+		void setData(const DataType data[size]) {
+			setData(data, size * sizeof(DataType));
 		}
 
-		std::variant<uint32_t, glm::vec3> floor, ceil;
-		floor = 3u;
-		ceil = 3u;
+		template<typename DataType>
+		void setData(const DataType* data, size_t count) {
+			setData((void*)data, count * sizeof(DataType));
+		}
+	};
 
-		std::cout << "  > Loading map texture" << std::endl;
-		Map mapData{
-			map,
-			glm::uvec2(mapWidth, mapHeight),
-			floor,
-			ceil,
-			initialPos,
-			initialDir,
-			initialPlane,
-			sprites,
-			std::make_shared<GLTexture2D>(GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, mapWidth, mapHeight, map, GL_NEAREST, GL_REPEAT),
-		};
-
-		return mapData;
+	constexpr int usageToGlUsage(Buffer::Usage usage) {
+		switch (usage) {
+		case Buffer::StreamDraw: return GL_STREAM_DRAW;
+		case Buffer::StreamRead: return GL_STREAM_READ;
+		case Buffer::StreamCopy: return GL_STREAM_COPY;
+		case Buffer::StaticDraw: return GL_STATIC_DRAW;
+		case Buffer::StaticRead: return GL_STATIC_READ;
+		case Buffer::StaticCopy: return GL_STATIC_COPY;
+		case Buffer::DynamicDraw: return GL_DYNAMIC_DRAW;
+		case Buffer::DynamicRead: return GL_DYNAMIC_READ;
+		case Buffer::DynamicCopy: return GL_DYNAMIC_COPY;
+		default: return GL_STREAM_COPY;
+		}
 	}
 
-	uint8_t* data;
-	glm::uvec2 size;
-	std::variant<uint32_t, glm::vec3> floor;
-	std::variant<uint32_t, glm::vec3> ceil;
-	glm::vec2 initialPos;
-	glm::vec2 initialDir;
-	glm::vec2 initialPlane;
-	std::vector<Sprite> sprites;
-	GLTexture2DRef texture;
-};
+	constexpr int typeToGlType(Buffer::Type type) {
+		switch (type) {
+		case Buffer::ArrayBuffer: return GL_ARRAY_BUFFER;
+		case Buffer::ElementArrayBuffer: return GL_ELEMENT_ARRAY_BUFFER;
+		case Buffer::ShaderStorageBuffer: return GL_SHADER_STORAGE_BUFFER;
+		default: return GL_ARRAY_BUFFER;
+		}
+	}
 
-class Buffer {
-public:
-	enum Type {
-		ArrayBuffer,
-		ElementArrayBuffer,
-		ShaderStorageBuffer,
-	};
+	Buffer::~Buffer() {
+		if (buffer) {
+			glDeleteBuffers(1, &buffer);
+			buffer = 0;
+		}
 
-	enum Usage {
-		StreamDraw,
-		StreamRead,
-		StreamCopy,
-		StaticDraw,
-		StaticRead,
-		StaticCopy,
-		DynamicDraw,
-		DynamicRead,
-		DynamicCopy,
-	};
+		if (data) {
+			free(data);
+			data = nullptr;
+		}
+	}
 
-private:
-	size_t bufferSize;
-	void* data = nullptr;
-	Type type;
-	Usage usage = StreamCopy;
+	void Buffer::build() {
+		auto type = typeToGlType(this->type);
+		auto usage = usageToGlUsage(this->usage);
+		glGenBuffers(1, &buffer);
+		glBindBuffer(type, buffer);
+		glBufferData(type, bufferSize, data, usage);
+	}
 
-	friend class BufferGeometry;
+	void Buffer::bind() {
+		if (!buffer) {
+			build();
+		}
 
-	void build();
+		glBindBuffer(typeToGlType(type), buffer);
+	}
 
-protected:
-	uint32_t buffer = 0;
+	void Buffer::bindBase(uint32_t index) {
+		if (!buffer) {
+			build();
+		}
 
-public:
-	Buffer(Type type, Usage usage = StreamCopy) : type(type), usage(usage) {}
+		glBindBufferBase(typeToGlType(type), index, buffer);
+	}
 
-	Buffer(Type type, size_t size, Usage usage = StreamCopy) : Buffer(type, usage) {
+	void Buffer::setData(const void* data, size_t size) {
+		if (bufferSize < size || !this->data) {
+			this->data = realloc(this->data, size);
+		}
+
+		auto type = typeToGlType(this->type);
+		auto usage = usageToGlUsage(this->usage);
+		memcpy(this->data, data, size);
 		bufferSize = size;
+		glBufferData(type, bufferSize, data, usage);
 	}
 
-	template<typename DataType, size_t size>
-	Buffer(Type type, const DataType data[size], Usage usage = StreamCopy) : Buffer(type, size * sizeof(DataType), usage) {
-		this->data = malloc(bufferSize);
-		memcpy(this->data, data, bufferSize);
+	void Buffer::mapBuffer(const std::function<void(const void* const)>& func) {
+		bind();
+		auto type = typeToGlType(this->type);
+		GLvoid* p = glMapBuffer(type, GL_READ_ONLY);
+		func(p);
+		glUnmapBuffer(type);
 	}
 
-	template<typename DataType>
-	Buffer(Type type, const DataType* data, size_t count, Usage usage = StaticCopy) : Buffer(type, count * sizeof(DataType), usage) {
-		this->data = malloc(bufferSize);
-		memcpy(this->data, data, bufferSize);
+	void Buffer::mapWritableBuffer(const std::function<void(void*)>& func) {
+		bind();
+		auto type = typeToGlType(this->type);
+		GLvoid* p = glMapBuffer(type, GL_READ_WRITE);
+		func(p);
+		glUnmapBuffer(type);
 	}
 
-	Buffer(const Buffer& o) {
-		bufferSize = o.bufferSize;
-		data = nullptr;
-		type = o.type;
-		usage = o.usage;
-		buffer = 0;
-
-		if (o.data) {
-			data = malloc(o.bufferSize);
-			memcpy(data, o.data, o.bufferSize);
-		}
+	void Buffer::_writeContentsToFile(const char* fileName) {
+		mapBuffer([this, fileName](const void* const ptr) {
+			std::ofstream ff("yes.bin");
+			ff.write((const char*)ptr, this->bufferSize);
+			ff.close();
+			});
 	}
-
-	~Buffer();
-
-	void bind();
-	void bindBase(uint32_t index);
-	void setData(const void* data, size_t size);
-	void mapWritableBuffer(const std::function<void(void*)>& func);
-	void mapBuffer(const std::function<void(const void* const)>& func);
-
-	void _writeContentsToFile(const char* fileName);
-
-	template<typename DataType, size_t size>
-	void setData(const DataType data[size]) {
-		setData(data, size * sizeof(DataType));
-	}
-
-	template<typename DataType>
-	void setData(const DataType* data, size_t count) {
-		setData((void*)data, count * sizeof(DataType));
-	}
-};
-
-constexpr int usageToGlUsage(Buffer::Usage usage) {
-	switch (usage) {
-	case Buffer::StreamDraw: return GL_STREAM_DRAW;
-	case Buffer::StreamRead: return GL_STREAM_READ;
-	case Buffer::StreamCopy: return GL_STREAM_COPY;
-	case Buffer::StaticDraw: return GL_STATIC_DRAW;
-	case Buffer::StaticRead: return GL_STATIC_READ;
-	case Buffer::StaticCopy: return GL_STATIC_COPY;
-	case Buffer::DynamicDraw: return GL_DYNAMIC_DRAW;
-	case Buffer::DynamicRead: return GL_DYNAMIC_READ;
-	case Buffer::DynamicCopy: return GL_DYNAMIC_COPY;
-	default: return GL_STREAM_COPY;
-	}
-}
-
-constexpr int typeToGlType(Buffer::Type type) {
-	switch (type) {
-	case Buffer::ArrayBuffer: return GL_ARRAY_BUFFER;
-	case Buffer::ElementArrayBuffer: return GL_ELEMENT_ARRAY_BUFFER;
-	case Buffer::ShaderStorageBuffer: return GL_SHADER_STORAGE_BUFFER;
-	default: return GL_ARRAY_BUFFER;
-	}
-}
-
-Buffer::~Buffer() {
-	if (buffer) {
-		glDeleteBuffers(1, &buffer);
-		buffer = 0;
-	}
-
-	if (data) {
-		free(data);
-		data = nullptr;
-	}
-}
-
-void Buffer::build() {
-	auto type = typeToGlType(this->type);
-	auto usage = usageToGlUsage(this->usage);
-	glGenBuffers(1, &buffer);
-	glBindBuffer(type, buffer);
-	glBufferData(type, bufferSize, data, usage);
-}
-
-void Buffer::bind() {
-	if (!buffer) {
-		build();
-	}
-
-	glBindBuffer(typeToGlType(type), buffer);
-}
-
-void Buffer::bindBase(uint32_t index) {
-	if (!buffer) {
-		build();
-	}
-
-	glBindBufferBase(typeToGlType(type), index, buffer);
-}
-
-void Buffer::setData(const void* data, size_t size) {
-	if (bufferSize < size || !this->data) {
-		this->data = realloc(this->data, size);
-	}
-
-	auto type = typeToGlType(this->type);
-	auto usage = usageToGlUsage(this->usage);
-	memcpy(this->data, data, size);
-	bufferSize = size;
-	glBufferData(type, bufferSize, data, usage);
-}
-
-void Buffer::mapBuffer(const std::function<void(const void* const)>& func) {
-	bind();
-	auto type = typeToGlType(this->type);
-	GLvoid* p = glMapBuffer(type, GL_READ_ONLY);
-	func(p);
-	glUnmapBuffer(type);
-}
-
-void Buffer::mapWritableBuffer(const std::function<void(void*)>& func) {
-	bind();
-	auto type = typeToGlType(this->type);
-	GLvoid* p = glMapBuffer(type, GL_READ_WRITE);
-	func(p);
-	glUnmapBuffer(type);
-}
-
-void Buffer::_writeContentsToFile(const char* fileName) {
-	mapBuffer([this, fileName](const void* const ptr) {
-		std::ofstream ff("yes.bin");
-		ff.write((const char*)ptr, this->bufferSize);
-		ff.close();
-		});
-}
-
-class Texture {
-public:
-	enum Type {
-		_2D,
-		Array2D,
-	};
-
-	enum Filter {
-		Nearest,
-		Linear,
-		NearestMipmapNearest,
-		LinearMipmapNearest,
-		NearestMipmapLinear,
-		LinearMipmapLinear,
-	};
-
-	enum Wrap {
-		ClampToEdge,
-		ClampToBorder,
-		MirroredRepeat,
-		Repeat,
-		MirrorClampToEdge,
-	};
-
-	enum InternalFormat {
-		RGBA32F,
-		R8UI,
-	};
-
-	enum ExternalFormat {
-		RedInteger,
-		RGB,
-	};
-
-	enum DataType {
-		UnsignedByte,
-	};
-
-private:
-	uint32_t texture = 0;
-	int type = 0;
-	int levels = 1;
-	InternalFormat internalFormat;
-
-public:
-	Texture(Type type);
-	~Texture();
-
-	void setWrap(Wrap s, Wrap t = Repeat, Wrap r = Repeat);
-	void setMinFilter(Filter filter);
-	void setMagFilter(Filter filter);
-
-	void fillImage2D(int level, InternalFormat iformat, glm::ivec2 size, int border, ExternalFormat eformat, DataType type, const void* data);
-	void reserveStorage3D(InternalFormat format, glm::ivec3 size, size_t levels = 1);
-	void fillSubImage3D(int level, glm::ivec3 offset, glm::ivec3 size, ExternalFormat format, DataType type, const void* data);
-
-	void bind();
-	void bindImage(uint32_t index, uint32_t level = 0, bool write = false, std::optional<int> layer = std::nullopt);
-};
-
-constexpr int wrapToGlWrap(Texture::Wrap wrap) {
-	switch (wrap) {
-	case Texture::ClampToEdge: return GL_CLAMP_TO_EDGE;
-	case Texture::ClampToBorder: return GL_CLAMP_TO_BORDER;
-	case Texture::MirroredRepeat: return GL_MIRRORED_REPEAT;
-	case Texture::Repeat: return GL_REPEAT;
-	default: return GL_REPEAT;
-	}
-}
-
-constexpr int filterToGlFilter(Texture::Filter filter) {
-	switch (filter) {
-	case Texture::Nearest: return GL_NEAREST;
-	case Texture::Linear: return GL_LINEAR;
-	case Texture::NearestMipmapNearest: return GL_NEAREST_MIPMAP_NEAREST;
-	case Texture::LinearMipmapNearest: return GL_LINEAR_MIPMAP_NEAREST;
-	case Texture::NearestMipmapLinear: return GL_NEAREST_MIPMAP_LINEAR;
-	case Texture::LinearMipmapLinear: return GL_LINEAR_MIPMAP_LINEAR;
-	default: return GL_NEAREST;
-	}
-}
-
-constexpr int formatToGlFormat(Texture::InternalFormat format) {
-	switch (format) {
-	case Texture::R8UI: return GL_R8UI;
-	case Texture::RGBA32F: return GL_RGBA32F;
-	default: return GL_RGB;
-	}
-}
-
-constexpr int formatToGlFormat(Texture::ExternalFormat format) {
-	switch (format) {
-	case Texture::RedInteger: return GL_RED_INTEGER;
-	case Texture::RGB: return GL_RGB;
-	default: return GL_RGB;
-	}
-}
-
-constexpr int dataTypeToGlType(Texture::DataType dataType) {
-	switch (dataType) {
-	case Texture::UnsignedByte: return GL_UNSIGNED_BYTE;
-	default: return GL_UNSIGNED_BYTE;
-	}
-}
-
-Texture::Texture(Type type) {
-	switch (type) {
-	case Type::_2D: this->type = GL_TEXTURE_2D; break;
-	case Type::Array2D: this->type = GL_TEXTURE_2D_ARRAY; break;
-	}
-}
-
-Texture::~Texture() {
-	if (texture) {
-		glDeleteTextures(1, &texture);
-		texture = 0;
-	}
-}
-
-void Texture::setWrap(Wrap s, Wrap t, Wrap) {
-	glTexParameteri(type, GL_TEXTURE_WRAP_S, wrapToGlWrap(s));
-	glTexParameteri(type, GL_TEXTURE_WRAP_T, wrapToGlWrap(t));
-}
-
-void Texture::setMinFilter(Filter filter) {
-	glTexParameteri(type, GL_TEXTURE_MIN_FILTER, filterToGlFilter(filter));
-}
-
-void Texture::setMagFilter(Filter filter) {
-	glTexParameteri(type, GL_TEXTURE_MAG_FILTER, filterToGlFilter(filter));
-}
-
-void Texture::fillImage2D(int level, InternalFormat iformat, glm::ivec2 size, int border, ExternalFormat eformat, DataType dataType, const void* data) {
-	internalFormat = iformat;
-
-	glTexImage2D(
-		type,
-		level,
-		formatToGlFormat(iformat),
-		size.x,
-		size.y,
-		border,
-		formatToGlFormat(eformat),
-		dataTypeToGlType(dataType),
-		data
-	);
-}
-
-void Texture::reserveStorage3D(InternalFormat format, glm::ivec3 size, size_t levels) {
-	internalFormat = format;
-
-	glTexStorage3D(this->type, levels, formatToGlFormat(format), size.x, size.y, size.z);
-}
-
-void Texture::fillSubImage3D(int level, glm::ivec3 offset, glm::ivec3 size, ExternalFormat format, DataType dataType, const void* data) {
-	glTexSubImage3D(
-		type,
-		level,
-		offset.x,
-		offset.y,
-		offset.z,
-		size.x,
-		size.y,
-		size.z,
-		formatToGlFormat(format),
-		dataTypeToGlType(dataType),
-		data
-	);
-}
-
-void Texture::bind() {
-	if (!texture) {
-		glGenTextures(1, &texture);
-	}
-
-	glBindTexture(type, texture);
-}
-
-void Texture::bindImage(uint32_t index, uint32_t level, bool write, std::optional<int> layer) {
-	if (!texture) {
-		glGenTextures(1, &texture);
-	}
-
-	glBindImageTexture(
-		index,
-		texture,
-		level,
-		(bool)layer,
-		layer.value_or(0),
-		write ? GL_READ_WRITE : GL_READ_ONLY,
-		formatToGlFormat(internalFormat)
-	);
-}
-
-static Texture generateTextures() {
-	typedef struct {
-		stbi_uc* data;
-		int width;
-		int height;
-		int components;
-		const char* path;
-	} stbiLoadStruct;
-
-	const auto stbiLoad = [](const char* path, const int c) -> stbiLoadStruct {
-		std::cout << "> Reading texture " << path << std::endl;
-		stbiLoadStruct res;
-		res.path = path;
-		res.data = stbi_load(path, &res.width, &res.height, &res.components, c);
-		return res;
-		};
-
-	stbiLoadStruct textures[] = {
-		stbiLoad("rc/textures/eagle.png", 3),
-		stbiLoad("rc/textures/redbrick.png", 3),
-		stbiLoad("rc/textures/purplestone.png", 3),
-		stbiLoad("rc/textures/greystone.png", 3),
-		stbiLoad("rc/textures/bluestone.png", 3),
-		stbiLoad("rc/textures/mossy.png", 3),
-		stbiLoad("rc/textures/wood.png", 3),
-		stbiLoad("rc/textures/colorstone.png", 3),
-
-		stbiLoad("rc/textures/barrel.png", 3),
-		stbiLoad("rc/textures/pillar.png", 3),
-		stbiLoad("rc/textures/greenlight.png", 3),
-	};
-
-	Texture glTextures(Texture::Array2D);
-	glTextures.bind();
-	glTextures.setWrap(Texture::Repeat, Texture::Repeat);
-	glTextures.setMinFilter(Texture::Nearest);
-	glTextures.setMagFilter(Texture::Nearest);
-	glTextures.reserveStorage3D(Texture::RGBA32F, { 64, 64, 11 });
-
-	for (size_t i = 0; i < 11; i += 1) {
-		const auto& texture = textures[i];
-		std::cout << "> Loading texture " << texture.path << std::endl;
-		glTextures.fillSubImage3D(
-			0,
-			{ 0, 0, i },
-			{ texture.width, texture.height, 1 },
-			Texture::RGB,
-			Texture::UnsignedByte,
-			texture.data
-		);
-
-		free(texture.data);
-	}
-
-	return glTextures;
-}
-
 }
 
 void RaycastGame()
@@ -1225,7 +973,21 @@ void RaycastGame()
 	);
 	spritecastInputBuffer.bind();
 
-	auto glTextures = raycast::generateTextures();
+	const std::vector<std::string_view> filepath{
+		"rc/textures/eagle.png",
+		"rc/textures/redbrick.png",
+		"rc/textures/purplestone.png",
+		"rc/textures/greystone.png",
+		"rc/textures/bluestone.png",
+		"rc/textures/mossy.png",
+		"rc/textures/wood.png",
+		"rc/textures/colorstone.png",
+
+		"rc/textures/barrel.png",
+		"rc/textures/pillar.png",
+		"rc/textures/greenlight.png"
+	};
+	auto textures = std::make_shared<GLTexture2DArray>(filepath, GL_RGBA32F, glm::ivec3{ 64, 64, 11 }, STBI_rgb, 1, GL_NEAREST, GL_REPEAT);
 
 	std::vector<raycast::Sprite> sortedSprites(currentMap->sprites);
 
@@ -1283,7 +1045,7 @@ void RaycastGame()
 		// отрисовка результата на экран через пиксельный шейдер
 		{
 			raycasterDrawProgram->Bind();
-			glTextures.bindImage(1, 0, false, 0);
+			textures->BindImage(1, 0, false, 0);
 			raycastResultBuffer.bindBase(2);
 			spritecastResultBuffer.bindBase(3);
 
