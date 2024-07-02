@@ -370,6 +370,14 @@ inline GLVertexArray::GLVertexArray(const std::vector<T>& vertices, const std::v
 }
 
 template<typename T>
+inline void GLShaderStorageBuffer::SetData(const std::vector<T>& buff)
+{
+	auto elementSize = sizeof(typename std::vector<T>::value_type);
+	auto elementCount = buff.size();
+	glNamedBufferData(m_handle, elementSize * elementCount, buff.data(), m_usage);
+}
+
+template<typename T>
 inline GLTextureCube::GLTextureCube(GLenum internalFormat, GLenum format, GLsizei width, GLsizei height, const std::array<T*, 6>& data)
 {
 	createTexture(internalFormat.format, width, height, data);

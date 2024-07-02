@@ -778,64 +778,18 @@ void main()
 		Type type;
 		Usage usage = StreamCopy;
 
-		friend class BufferGeometry;
-
 		void build();
 
-	protected:
 		uint32_t buffer = 0;
 
 	public:
-		Buffer(Type type, Usage usage = StreamCopy) : type(type), usage(usage) {}
-
-		Buffer(Type type, size_t size, Usage usage = StreamCopy) : Buffer(type, usage) {
-			bufferSize = size;
+		Buffer(Type type, size_t size, Usage usage = StreamCopy) : type(type), usage(usage), bufferSize(size){
 		}
-
-		template<typename DataType, size_t size>
-		Buffer(Type type, const DataType data[size], Usage usage = StreamCopy) : Buffer(type, size * sizeof(DataType), usage) {
-			this->data = malloc(bufferSize);
-			memcpy(this->data, data, bufferSize);
-		}
-
-		template<typename DataType>
-		Buffer(Type type, const DataType* data, size_t count, Usage usage = StaticCopy) : Buffer(type, count * sizeof(DataType), usage) {
-			this->data = malloc(bufferSize);
-			memcpy(this->data, data, bufferSize);
-		}
-
-		Buffer(const Buffer& o) {
-			bufferSize = o.bufferSize;
-			data = nullptr;
-			type = o.type;
-			usage = o.usage;
-			buffer = 0;
-
-			if (o.data) {
-				data = malloc(o.bufferSize);
-				memcpy(data, o.data, o.bufferSize);
-			}
-		}
-
 		~Buffer();
 
 		void bind();
 		void bindBase(uint32_t index);
 		void setData(const void* data, size_t size);
-		void mapWritableBuffer(const std::function<void(void*)>& func);
-		void mapBuffer(const std::function<void(const void* const)>& func);
-
-		void _writeContentsToFile(const char* fileName);
-
-		template<typename DataType, size_t size>
-		void setData(const DataType data[size]) {
-			setData(data, size * sizeof(DataType));
-		}
-
-		template<typename DataType>
-		void setData(const DataType* data, size_t count) {
-			setData((void*)data, count * sizeof(DataType));
-		}
 	};
 
 	constexpr int usageToGlUsage(Buffer::Usage usage) {
@@ -910,29 +864,6 @@ void main()
 		glBufferData(type, bufferSize, data, usage);
 	}
 
-	void Buffer::mapBuffer(const std::function<void(const void* const)>& func) {
-		bind();
-		auto type = typeToGlType(this->type);
-		GLvoid* p = glMapBuffer(type, GL_READ_ONLY);
-		func(p);
-		glUnmapBuffer(type);
-	}
-
-	void Buffer::mapWritableBuffer(const std::function<void(void*)>& func) {
-		bind();
-		auto type = typeToGlType(this->type);
-		GLvoid* p = glMapBuffer(type, GL_READ_WRITE);
-		func(p);
-		glUnmapBuffer(type);
-	}
-
-	void Buffer::_writeContentsToFile(const char* fileName) {
-		mapBuffer([this, fileName](const void* const ptr) {
-			std::ofstream ff("yes.bin");
-			ff.write((const char*)ptr, this->bufferSize);
-			ff.close();
-			});
-	}
 }
 
 void RaycastGame()
@@ -954,24 +885,9 @@ void RaycastGame()
 	glm::vec2 dir = currentMap->initialDir;
 	glm::vec2 plane = currentMap->initialPlane;
 
-	raycast::Buffer raycastResultBuffer(
-		raycast::Buffer::ShaderStorageBuffer,
-		10000 * (5 * sizeof(int32_t) + 5 * sizeof(float))
-	);
-	raycastResultBuffer.bind();
-
-	raycast::Buffer spritecastResultBuffer(
-		raycast::Buffer::ShaderStorageBuffer,
-		currentMap->sprites.size() * (8 * sizeof(int32_t) + 1 * sizeof(float) + 1 * sizeof(uint32_t))
-	);
-	spritecastResultBuffer.bind();
-
-	raycast::Buffer spritecastInputBuffer(
-		raycast::Buffer::ShaderStorageBuffer,
-		currentMap->sprites.size() * sizeof(raycast::Sprite),
-		raycast::Buffer::DynamicCopy
-	);
-	spritecastInputBuffer.bind();
+	auto raycastResultBuffer = std::make_shared< GLShaderStorageBuffer>(10000 * (5 * sizeof(int32_t) + 5 * sizeof(float)));
+	 auto spritecastResultBuffer = std::make_shared< GLShaderStorageBuffer>(currentMap->sprites.size() * (8 * sizeof(int32_t) + 1 * sizeof(float) + 1 * sizeof(uint32_t)));
+	auto spritecastInputBuffer = std::make_shared< GLShaderStorageBuffer>(currentMap->sprites.size() * sizeof(raycast::Sprite), GL_DYNAMIC_COPY);
 
 	const std::vector<std::string_view> filepath{
 		"rc/textures/eagle.png",
@@ -1012,7 +928,7 @@ void RaycastGame()
 		// старт рейкастинга на вычислительном шейдере
 		{
 			currentMap->texture->BindImage(1);
-			raycastResultBuffer.bindBase(2);
+			raycastResultBuffer->BindBase(2);
 
 			raycasterComputeProgram->Bind();
 			raycasterComputeProgram->SetComputeUniform(1, pos);
@@ -1024,8 +940,8 @@ void RaycastGame()
 
 		// старт рендера спрайтов на вычислительном шейдере
 		{
-			spritecastInputBuffer.bindBase(1);
-			spritecastResultBuffer.bindBase(2);
+			spritecastInputBuffer->BindBase(1);
+			spritecastResultBuffer->BindBase(2);
 
 			spritecasterComputeProgram->Bind();
 			spritecasterComputeProgram->SetComputeUniform(1, pos);
@@ -1046,8 +962,8 @@ void RaycastGame()
 		{
 			raycasterDrawProgram->Bind();
 			textures->BindImage(1, 0, false, 0);
-			raycastResultBuffer.bindBase(2);
-			spritecastResultBuffer.bindBase(3);
+			raycastResultBuffer->BindBase(2);
+			spritecastResultBuffer->BindBase(3);
 
 			raycasterDrawProgram->SetFragmentUniform(1, glm::ivec2(Window::GetWidth(), Window::GetHeight())); // TODO: only resize window events
 			raycasterDrawProgram->SetFragmentUniform(2, pos);
@@ -1137,8 +1053,7 @@ void RaycastGame()
 				return distA > distB;
 				});
 
-			spritecastInputBuffer.bind();
-			spritecastInputBuffer.setData(sortedSprites.data(), sortedSprites.size());
+			spritecastInputBuffer->SetData(sortedSprites);
 		}
 
 		previousTime = currentTime;

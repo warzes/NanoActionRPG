@@ -433,6 +433,31 @@ private:
 };
 using GLVertexArrayRef = std::shared_ptr<GLVertexArray>;
 
+// TODO: возможно объединить с GLBuffer
+class GLShaderStorageBuffer final
+{
+public:
+	GLShaderStorageBuffer() = delete;
+	GLShaderStorageBuffer(size_t size, GLenum usage = GL_STREAM_COPY);
+	~GLShaderStorageBuffer();
+
+	[[nodiscard]] operator GLuint() const noexcept { return m_handle; }
+	[[nodiscard]] bool IsValid() const noexcept { return m_handle != 0; }
+
+	void BindBase(uint32_t index);
+
+	template<typename T>
+	void SetData(const std::vector<T>& buff);
+
+private:
+	void createHandle();
+	void destroyHandle();
+
+	GLuint m_handle = 0;
+	GLenum m_usage = 0;
+};
+using GLShaderStorageBufferRef = std::shared_ptr<GLShaderStorageBuffer>;
+
 class GLTexture2D final
 {
 public:
@@ -478,7 +503,6 @@ private:
 	GLenum m_internalFormat = 0;
 };
 using GLTexture2DArrayRef = std::shared_ptr<GLTexture2DArray>;
-
 
 class GLTextureCube final
 {

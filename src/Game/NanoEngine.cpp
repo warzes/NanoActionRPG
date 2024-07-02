@@ -498,6 +498,39 @@ void GLVertexArray::setIndexBuffer(GLBufferRef ibo)
 
 #pragma endregion
 
+#pragma region GLShaderStorageBuffer
+
+GLShaderStorageBuffer::GLShaderStorageBuffer(size_t size, GLenum usage)
+{
+	m_usage = usage;
+	createHandle();
+	glNamedBufferData(m_handle, size, nullptr, usage);
+}
+
+GLShaderStorageBuffer::~GLShaderStorageBuffer()
+{
+	destroyHandle();
+}
+
+void GLShaderStorageBuffer::BindBase(uint32_t index)
+{
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, index, m_handle);
+}
+
+void GLShaderStorageBuffer::createHandle()
+{
+	glCreateBuffers(1, &m_handle);
+}
+
+void GLShaderStorageBuffer::destroyHandle()
+{
+	if (m_handle != 0)
+		glDeleteBuffers(1, &m_handle);
+	m_handle = 0;
+}
+
+#pragma endregion
+
 #pragma region GLTexture2D
 
 GLTexture2D::GLTexture2D(GLenum internalFormat, GLenum format, GLsizei width, GLsizei height, void* data, GLint filter, GLint repeat, bool generateMipMaps)
