@@ -83,8 +83,23 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{ee6066be-ad1b-46cd-99b5-ec9a8d0a8555}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Raycast">
+      <UniqueIdentifier>{efd66d32-a802-48fb-af95-7ce1c10edac8}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="NanoEngine.inl" />
+    <None Include="..\..\bin\RaycastData\Shader\MainVertexShader.vert">
+      <Filter>Raycast</Filter>
+    </None>
+    <None Include="..\..\bin\RaycastData\Shader\RaycasterShader.comp">
+      <Filter>Raycast</Filter>
+    </None>
+    <None Include="..\..\bin\RaycastData\Shader\SpritecasterShader.comp">
+      <Filter>Raycast</Filter>
+    </None>
+    <None Include="..\..\bin\RaycastData\Shader\DrawerShader.frag">
+      <Filter>Raycast</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -146,6 +146,10 @@
     <ClInclude Include="RaycastGame.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\bin\RaycastData\Shader\DrawerShader.frag" />
+    <None Include="..\..\bin\RaycastData\Shader\MainVertexShader.vert" />
+    <None Include="..\..\bin\RaycastData\Shader\RaycasterShader.comp" />
+    <None Include="..\..\bin\RaycastData\Shader\SpritecasterShader.comp" />
     <None Include="NanoEngine.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

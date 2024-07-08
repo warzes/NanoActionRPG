@@ -277,6 +277,8 @@ constexpr inline AttribFormat CreateAttribFormat(GLuint attribIndex, GLuint rela
 
 const std::pair<GLenum, GLenum> STBImageToOpenGLFormat(int comp);
 
+std::string LoadShaderTextFile(const std::string& fileName);
+
 #pragma endregion
 
 //==============================================================================
