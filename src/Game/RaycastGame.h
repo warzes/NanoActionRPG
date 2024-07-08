@@ -359,13 +359,18 @@ void RaycastGame()
 
 	auto currentMap = raycast::Map::Load();
 
+	// player stats
 	glm::vec2 pos = currentMap->initialPos;
 	glm::vec2 dir = currentMap->initialDir;
 	glm::vec2 plane = currentMap->initialPlane;
 
-	auto raycastResultBuffer = std::make_shared<GLShaderStorageBuffer>(10000 * (5 * sizeof(int32_t) + 5 * sizeof(float))); // sizeof(xdata) * 10000
-	auto spritecastResultBuffer = std::make_shared<GLShaderStorageBuffer>(currentMap->sprites.size() * (8 * sizeof(int32_t) + 1 * sizeof(float) + 1 * sizeof(uint32_t)));
-	auto spritecastInputBuffer = std::make_shared<GLShaderStorageBuffer>(currentMap->sprites.size() * sizeof(raycast::Sprite), GL_DYNAMIC_COPY);
+	const size_t raycastResultBufferSize = 10000 * (5 * sizeof(int32_t) + 5 * sizeof(float)); // sizeof(xdata) * 10000
+	const size_t spritecastResultBufferSize = currentMap->sprites.size() * (8 * sizeof(int32_t) + 1 * sizeof(float) + 1 * sizeof(uint32_t));
+	const size_t spritecastInputBufferSize = currentMap->sprites.size() * sizeof(raycast::Sprite);
+
+	auto raycastResultBuffer = std::make_shared<GLShaderStorageBuffer>(raycastResultBufferSize);
+	auto spritecastResultBuffer = std::make_shared<GLShaderStorageBuffer>(spritecastResultBufferSize);
+	auto spritecastInputBuffer = std::make_shared<GLShaderStorageBuffer>(spritecastInputBufferSize, GL_DYNAMIC_COPY);
 
 	const std::vector<std::string_view> filepath{
 		"rc/textures/eagle.png",
@@ -392,16 +397,14 @@ void RaycastGame()
 	glm::vec2 mouseDirection(0, 0);
 
 	Mouse::SetCursorMode(Mouse::CursorMode::Disabled);
-
-	
+		
 	glm::ivec2 frameSize;
-	const float framebufferSize = 600.0f;
+	const float framebufferSize = 300.0f;
 	float aspectRatioScreen = (float)Window::GetWidth() / (float)Window::GetHeight();
 	if (aspectRatioScreen > 1.333)
 		frameSize = { framebufferSize * aspectRatioScreen, framebufferSize };
 	else
 		frameSize = { framebufferSize , framebufferSize * aspectRatioScreen };
-
 
 	while (!Window::ShouldClose())
 	{
@@ -428,14 +431,14 @@ void RaycastGame()
 			* TODO: ssbo буфер содержит 10000 элементов, где каждый элемент - это столбец. то есть максимальная ширина экрана - 10000 пикселей. но мне не нужна такая высота, возможно сократить до 4000.
 			*/
 
-			currentMap->texture->BindImage(1);
-			raycastResultBuffer->BindBase(2);
+			currentMap->texture->BindImage(1); // биндится карта в виде текстуры
+			raycastResultBuffer->BindBase(2); // биндится выходной буфер данных
 
 			raycasterComputeProgram->Bind();
-			raycasterComputeProgram->SetComputeUniform(1, pos);
-			raycasterComputeProgram->SetComputeUniform(2, dir);
+			raycasterComputeProgram->SetComputeUniform(1, pos); // позиция игрока
+			raycasterComputeProgram->SetComputeUniform(2, dir); // направление взгляда игрока
 			raycasterComputeProgram->SetComputeUniform(3, plane);
-			raycasterComputeProgram->SetComputeUniform(4, frameSize); // TODO: only resize window events
+			raycasterComputeProgram->SetComputeUniform(4, frameSize);
 			glDispatchCompute(frameSize.x, 1, 1);
 		}
 

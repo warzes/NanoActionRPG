@@ -30,7 +30,6 @@ void main()
 	uint x = pixelCoords.x;
 	uint w = screenSize.x;
 	int height = screenSize.y;
-	ivec3 pixel = ivec3(0, 0, 0);
 	ivec2 mapSize = imageSize(map);
 
 	// x-coord in camera space

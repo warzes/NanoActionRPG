@@ -18,7 +18,8 @@ namespace UtilsExample
 
 
 #pragma region VertexShader
-			const char* vertSource = R"(
+			const char* vertSource = // vertex shader:
+				R"(
 #version 460 core
 
 // -----------  Per vertex  -----------
@@ -41,7 +42,8 @@ void main()
 #pragma endregion
 
 #pragma region FragmentShader
-			const char* fragSource = R"(
+			const char* fragSource = // fragment shader:
+				R"(
 #version 460 core
 
 in vec4 position;
