@@ -90,17 +90,25 @@ void main()
 		// make color darker for y-sides
 		if(data.side == 1) color *= 0.75;
 		FragColor = color;
-	} else {
+	} 
+	else 
+	{
+		//discard;// TODO: пока не рисовать потолок
+
 		if(data.draw.y < 0)
 		data.draw.y = screenSize.y;
 
 		// in fact it is not ceil, is floor, because of Y-inverted stuff on OpenGL
 		bool isCeil = heightf < data.draw.y;
+
 		// texture here are inverted because of the previous comment about isCeil
 		vec4 tex = isCeil ? floorTex : ceilTex;
-		if(tex.a == 0.0f) {
+		if(tex.a == 0.0f) 
+		{
 			FragColor = vec4(tex.rgb, 1.0f);
-		} else {
+		}
+		else 
+		{
 			float currentDist;
 			if(isCeil)
 				currentDist = float(screenSize.y) / (2.0f * (float(screenSize.y) - heightf) - float(screenSize.y));

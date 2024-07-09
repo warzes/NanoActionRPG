@@ -51,6 +51,7 @@ void main()
 	ivec2 mapPos = ivec2(position);
 	// length of the ray from one x/y-side to the next x/y-side (simplified formula)
 	vec2 deltaDist = vec2(abs(1 / rayDir.x), abs(1 / rayDir.y));
+	
 	// direction of the ray
 	ivec2 step;
 	// length of the ray from current position to the next x/y-side
@@ -117,16 +118,8 @@ void main()
 	int lineHeight = int(screenHeight / perpWallDist);
 
 	// calculate lowest and highest pixel to fill in current stripe
-	int drawStart = -lineHeight / 2 + screenHeight / 2;
-	if(drawStart < 0)
-	{
-		drawStart = 0;
-	}
-	int drawEnd = lineHeight / 2 + screenHeight / 2;
-	if(drawEnd >= screenHeight) 
-	{
-		drawEnd = screenHeight - 1;
-	}
+	int drawStart = max(-lineHeight / 2 + screenHeight / 2, 0);
+	int drawEnd   = min( lineHeight / 2 + screenHeight / 2, screenHeight);
 
 	// texturing calculations (map coords are reversed)
 	uint texNum = mapData[mapPos.x * maxMapSize.x + mapPos.y].textureId-1;
