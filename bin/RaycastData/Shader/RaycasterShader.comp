@@ -43,8 +43,8 @@ void main()
 {
 	uint x = gl_GlobalInvocationID.x;
 
-	// x-coord in camera space
-	float cameraX = 2 * float(x) / float(screenWidth) - 1;
+	// x-coord in camera space - [-1;0;+1]
+	const float cameraX = 2.0 * float(x) / float(screenWidth) - 1.0; 
 	vec2 rayDir = direction + plane * cameraX;
 
 	// where we are now (the box from the map)
