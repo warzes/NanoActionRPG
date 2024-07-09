@@ -266,15 +266,19 @@ inline void GLSeparableShaderProgram::SetUniform(GLint location, const T& value)
 	else if constexpr (std::is_same_v<T, bool>) glProgramUniform1ui(m_handle, location, value);
 	else if constexpr (std::is_same_v<T, GLfloat>) glProgramUniform1f(m_handle, location, value);
 	else if constexpr (std::is_same_v<T, GLdouble>) glProgramUniform1d(m_handle, location, value);
+
 	else if constexpr (std::is_same_v<T, glm::vec2>) glProgramUniform2fv(m_handle, location, 1, glm::value_ptr(value));
 	else if constexpr (std::is_same_v<T, glm::vec3>) glProgramUniform3fv(m_handle, location, 1, glm::value_ptr(value));
 	else if constexpr (std::is_same_v<T, glm::vec4>) glProgramUniform4fv(m_handle, location, 1, glm::value_ptr(value));
+
 	else if constexpr (std::is_same_v<T, glm::ivec2>) glProgramUniform2iv(m_handle, location, 1, glm::value_ptr(value));
 	else if constexpr (std::is_same_v<T, glm::ivec3>) glProgramUniform3iv(m_handle, location, 1, glm::value_ptr(value));
 	else if constexpr (std::is_same_v<T, glm::ivec4>) glProgramUniform4iv(m_handle, location, 1, glm::value_ptr(value));
+
 	else if constexpr (std::is_same_v<T, glm::uvec2>) glProgramUniform2uiv(m_handle, location, 1, glm::value_ptr(value));
 	else if constexpr (std::is_same_v<T, glm::uvec3>) glProgramUniform3uiv(m_handle, location, 1, glm::value_ptr(value));
 	else if constexpr (std::is_same_v<T, glm::uvec4>) glProgramUniform4uiv(m_handle, location, 1, glm::value_ptr(value));
+
 	else if constexpr (std::is_same_v<T, glm::quat>) glProgramUniform4fv(m_handle, location, 1, glm::value_ptr(value));
 	else if constexpr (std::is_same_v<T, glm::mat3>) glProgramUniformMatrix3fv(m_handle, location, 1, GL_FALSE, glm::value_ptr(value));
 	else if constexpr (std::is_same_v<T, glm::mat4>) glProgramUniformMatrix4fv(m_handle, location, 1, GL_FALSE, glm::value_ptr(value));

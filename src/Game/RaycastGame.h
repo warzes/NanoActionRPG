@@ -4,6 +4,11 @@
 
 namespace raycast
 {
+	struct MapCellData
+	{
+		uint32_t textureId;
+	};
+
 	struct Sprite
 	{
 		inline operator glm::vec2()
@@ -36,6 +41,7 @@ namespace raycast
 			uint32_t mapWidth = 24;
 			uint32_t mapHeight = 24;
 			uint8_t* map = new uint8_t[mapWidth * mapHeight];
+			std::vector<MapCellData> newMapData(mapWidth * mapHeight);
 
 			std::vector<std::vector<uint8_t>> tempMap = {
 				{8,8,8,8,8,8,8,8,8,8,8,4,4,6,4,4,6,4,6,4,4,4,6,4},
@@ -69,6 +75,7 @@ namespace raycast
 				for (uint32_t y = 0; y < mapHeight; y++)
 				{
 					map[x * mapWidth + y] = tempMap[x][y];
+					newMapData[x * mapWidth + y].textureId = tempMap[x][y];
 				}
 			}
 
@@ -327,6 +334,7 @@ namespace raycast
 				initialPlane,
 				sprites,
 				std::make_shared<GLTexture2D>(GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, mapWidth, mapHeight, map, GL_NEAREST, GL_REPEAT),
+				newMapData
 			};
 
 			return mapData;
@@ -341,6 +349,8 @@ namespace raycast
 		glm::vec2 initialPlane;
 		std::vector<Sprite> sprites;
 		GLTexture2DRef texture;
+
+		std::vector<MapCellData> newMapData;
 	};
 }
 
@@ -368,9 +378,14 @@ void RaycastGame()
 	const size_t spritecastResultBufferSize = currentMap->sprites.size() * (8 * sizeof(int32_t) + 1 * sizeof(float) + 1 * sizeof(uint32_t));
 	const size_t spritecastInputBufferSize = currentMap->sprites.size() * sizeof(raycast::Sprite);
 
+	const size_t mapBufferSize = currentMap->size.x * currentMap->size.y * sizeof(raycast::MapCellData);
+
 	auto raycastResultBuffer = std::make_shared<GLShaderStorageBuffer>(raycastResultBufferSize);
 	auto spritecastResultBuffer = std::make_shared<GLShaderStorageBuffer>(spritecastResultBufferSize);
 	auto spritecastInputBuffer = std::make_shared<GLShaderStorageBuffer>(spritecastInputBufferSize, GL_DYNAMIC_COPY);
+
+	auto mapBuffer = std::make_shared<GLShaderStorageBuffer>(mapBufferSize);
+	mapBuffer->SetData(currentMap->newMapData);
 
 	const std::vector<std::string_view> filepath{
 		"rc/textures/eagle.png",
@@ -431,14 +446,16 @@ void RaycastGame()
 			* TODO: ssbo буфер содержит 10000 элементов, где каждый элемент - это столбец. то есть максимальная ширина экрана - 10000 пикселей. но мне не нужна такая высота, возможно сократить до 4000.
 			*/
 
-			currentMap->texture->BindImage(1); // биндится карта в виде текстуры
-			raycastResultBuffer->BindBase(2); // биндится выходной буфер данных
+			raycastResultBuffer->BindBase(1); // биндится выходной буфер данных
+			mapBuffer->BindBase(2); // биндится данные карты
 
 			raycasterComputeProgram->Bind();
 			raycasterComputeProgram->SetComputeUniform(1, pos); // позиция игрока
 			raycasterComputeProgram->SetComputeUniform(2, dir); // направление взгляда игрока
 			raycasterComputeProgram->SetComputeUniform(3, plane);
-			raycasterComputeProgram->SetComputeUniform(4, frameSize);
+			raycasterComputeProgram->SetComputeUniform(4, frameSize.x);
+			raycasterComputeProgram->SetComputeUniform(5, frameSize.y);
+			raycasterComputeProgram->SetComputeUniform(6, currentMap->size);
 			glDispatchCompute(frameSize.x, 1, 1);
 		}
 
