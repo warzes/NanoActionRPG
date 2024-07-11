@@ -1,5 +1,7 @@
 ﻿#include "NanoEngine.h"
 #include "Example001.h"
+#include "Example002.h"
+
 #include "Example.h"
 #include "Current.h"
 #include "RaycastGame.h"
@@ -119,7 +121,9 @@ int main(
 	[[maybe_unused]] char* argv[])
 {
 
-	Example001();
+	//Example001();
+	Example002();
+
 	//Example002();
 	//Example003();
 	//Example004();

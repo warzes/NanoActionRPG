@@ -374,6 +374,16 @@ inline GLVertexArray::GLVertexArray(const std::vector<T>& vertices, const std::v
 }
 
 template<typename T>
+inline GLShaderStorageBuffer::GLShaderStorageBuffer(const std::vector<T>& buff, GLenum usage)
+{
+	m_usage = usage;
+	createHandle();
+	auto elementSize = sizeof(typename std::vector<T>::value_type);
+	auto elementCount = buff.size();
+	glNamedBufferStorage(m_handle, elementSize * elementCount, buff.data(), usage);
+}
+
+template<typename T>
 inline void GLShaderStorageBuffer::SetData(const std::vector<T>& buff)
 {
 	auto elementSize = sizeof(typename std::vector<T>::value_type);

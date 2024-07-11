@@ -143,6 +143,7 @@
     <ClInclude Include="Current.h" />
     <ClInclude Include="Example.h" />
     <ClInclude Include="Example001.h" />
+    <ClInclude Include="Example002.h" />
     <ClInclude Include="InfinityTerrain.h" />
     <ClInclude Include="NanoEngine.h" />
     <ClInclude Include="RaycastGame.h" />

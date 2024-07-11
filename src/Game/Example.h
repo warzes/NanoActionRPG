@@ -787,7 +787,7 @@ void main()
 * Загрузка и вывод 3д модели из файла
 * - mesh, model, material
 */
-void Example002()
+void Example003()
 {
 	Window::Create("Game", 1024, 768);
 	Renderer::Init();
@@ -941,7 +941,7 @@ void main()
 * Deferred shading
 * - фреймбуферы
 */
-void Example003()
+void Example004()
 {
 	Window::Create("Game", 1600, 900);
 	Renderer::Init();
@@ -1107,7 +1107,7 @@ void Example003()
 }
 
 
-void Example004()
+void Example005()
 {
 	Window::Create("Game", 1600, 900);
 	Renderer::Init();

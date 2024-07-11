@@ -78,6 +78,9 @@
     <ClInclude Include="Example001.h">
       <Filter>Execute\Examples</Filter>
     </ClInclude>
+    <ClInclude Include="Example002.h">
+      <Filter>Execute\Examples</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="3rdparty">

@@ -441,6 +441,8 @@ class GLShaderStorageBuffer final
 public:
 	GLShaderStorageBuffer() = delete;
 	GLShaderStorageBuffer(size_t size, GLenum usage = GL_STREAM_COPY);
+	template<typename T>
+	GLShaderStorageBuffer(const std::vector<T>& buff, GLenum usage = GL_STREAM_COPY);
 	~GLShaderStorageBuffer();
 
 	[[nodiscard]] operator GLuint() const noexcept { return m_handle; }
