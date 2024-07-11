@@ -75,6 +75,9 @@
     <ClInclude Include="InfinityTerrain.h">
       <Filter>Execute</Filter>
     </ClInclude>
+    <ClInclude Include="Example001.h">
+      <Filter>Execute\Examples</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="3rdparty">
@@ -97,6 +100,9 @@
     </Filter>
     <Filter Include="Execute">
       <UniqueIdentifier>{981b1ca7-edcb-4bf3-8c68-fe0d0a99875f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Execute\Examples">
+      <UniqueIdentifier>{7e17edc6-526a-44f7-bf08-155cad211c15}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
