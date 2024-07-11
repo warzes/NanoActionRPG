@@ -2,6 +2,7 @@
 #include "Example.h"
 #include "Current.h"
 #include "RaycastGame.h"
+#include "InfinityTerrain.h"
 
 using namespace physx;
 
@@ -122,7 +123,8 @@ int main(
 	//Example003();
 	//Example004();
 	//Example00X();
-	RaycastGame();
+	//RaycastGame();
+	InfinityTerrain();
 
 	return 0;
 

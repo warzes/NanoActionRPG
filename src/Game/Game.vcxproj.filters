@@ -63,9 +63,18 @@
     <ClInclude Include="..\3rdparty\Profiler.h">
       <Filter>3rdparty</Filter>
     </ClInclude>
-    <ClInclude Include="Example.h" />
-    <ClInclude Include="Current.h" />
-    <ClInclude Include="RaycastGame.h" />
+    <ClInclude Include="Current.h">
+      <Filter>Execute</Filter>
+    </ClInclude>
+    <ClInclude Include="Example.h">
+      <Filter>Execute</Filter>
+    </ClInclude>
+    <ClInclude Include="RaycastGame.h">
+      <Filter>Execute</Filter>
+    </ClInclude>
+    <ClInclude Include="InfinityTerrain.h">
+      <Filter>Execute</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="3rdparty">
@@ -85,6 +94,9 @@
     </Filter>
     <Filter Include="Raycast">
       <UniqueIdentifier>{efd66d32-a802-48fb-af95-7ce1c10edac8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Execute">
+      <UniqueIdentifier>{981b1ca7-edcb-4bf3-8c68-fe0d0a99875f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

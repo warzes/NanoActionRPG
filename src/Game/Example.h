@@ -880,7 +880,7 @@ void main()
 	glViewport(0, 0, Window::GetWidth(), Window::GetHeight());
 
 	Camera camera;
-	camera.Set({ 0.0f, 0.3f, -1.0f });
+	camera.Set({ 0.0f, 0.3f, 1.0f });
 
 	glEnable(GL_DEPTH_TEST);
 

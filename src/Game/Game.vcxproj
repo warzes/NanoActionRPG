@@ -142,6 +142,7 @@
     <ClInclude Include="..\3rdparty\stb\stb_image.h" />
     <ClInclude Include="Current.h" />
     <ClInclude Include="Example.h" />
+    <ClInclude Include="InfinityTerrain.h" />
     <ClInclude Include="NanoEngine.h" />
     <ClInclude Include="RaycastGame.h" />
   </ItemGroup>
