@@ -12,23 +12,22 @@
 */
 void Example002()
 {
-	Window::Create("Game", 1600, 900);
+	Window::Create({});
 	Renderer::Init();
 	IMGUI::Init();
 
 	struct Vertex final
 	{
-		glm::vec4 position;
+		glm::vec3 position;
 		glm::vec2 texCoords;
-		glm::vec2 offset = glm::vec2(0.0f); // должен быть выравнен под 16 байт
 	};
 
 	const std::vector<Vertex> verticesQuad =
 	{
-		{{-0.5f, 0.0f, 0.5f, 1.0f}, {0.0f, 0.0f}},
-		{{ 0.5f, 0.0f, 0.5f, 1.0f}, {1.0f, 0.0f}},
-		{{ 0.5f, 0.0f,-0.5f, 1.0f}, {1.0f, 1.0f}},
-		{{-0.5f, 0.0f,-0.5f, 1.0f}, {0.0f, 1.0f}},
+		{{-0.5f, 0.0f, 0.5f}, {0.0f, 0.0f}},
+		{{ 0.5f, 0.0f, 0.5f}, {1.0f, 0.0f}},
+		{{ 0.5f, 0.0f,-0.5f}, {1.0f, 1.0f}},
+		{{-0.5f, 0.0f,-0.5f}, {0.0f, 1.0f}},
 	};
 
 	GLShaderStorageBufferRef verticesData{ new GLShaderStorageBuffer(verticesQuad, GL_DYNAMIC_STORAGE_BIT) };
@@ -48,9 +47,12 @@ void Example002()
 #version 460
 
 struct VertexData {
-	vec4 position;
-	vec2 texCoords;
-	vec2 offset;
+	float positionX;
+	float positionY;
+	float positionZ;
+
+	float texCoordsU;
+	float texCoordsV;
 };
 
 layout(std430, binding = 0) restrict readonly buffer VertexBuffer {
@@ -69,12 +71,12 @@ layout (location = 2) uniform mat4 uWorldMatrix;
 
 vec4 getPosition(uint index) 
 {
-	return Vertex[index].position;
+	return vec4(Vertex[index].positionX, Vertex[index].positionY, Vertex[index].positionZ, 1.0);
 }
 
 vec2 getUV(uint index)
 {
-	return Vertex[index].texCoords;
+	return vec2(Vertex[index].texCoordsU, Vertex[index].texCoordsV);
 }
 
 void main()

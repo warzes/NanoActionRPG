@@ -789,7 +789,7 @@ void main()
 */
 void Example003()
 {
-	Window::Create("Game", 1024, 768);
+	Window::Create({});
 	Renderer::Init();
 	IMGUI::Init();
 
@@ -943,7 +943,7 @@ void main()
 */
 void Example004()
 {
-	Window::Create("Game", 1600, 900);
+	Window::Create({});
 	Renderer::Init();
 	IMGUI::Init();
 
@@ -1109,7 +1109,7 @@ void Example004()
 
 void Example005()
 {
-	Window::Create("Game", 1600, 900);
+	Window::Create({});
 	Renderer::Init();
 	IMGUI::Init();
 

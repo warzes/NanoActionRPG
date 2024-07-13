@@ -356,7 +356,7 @@ namespace raycast
 
 void RaycastGame()
 {
-	Window::Create("Game", 1600, 900);
+	Window::Create({});
 	Renderer::Init();
 	IMGUI::Init();
 

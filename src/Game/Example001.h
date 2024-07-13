@@ -12,22 +12,34 @@
 */
 void Example001()
 {
-	Window::Create("Game", 1600, 900);
+	Window::Create({});
 	Renderer::Init();
 	IMGUI::Init();
 
-	const std::vector<MeshVertex> verticesQuad =
+	struct Vertex final
 	{
-		{{-0.5f, 0.0f, 0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-		{{ 0.5f, 0.0f, 0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-		{{ 0.5f, 0.0f,-0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
-		{{-0.5f, 0.0f,-0.5f}, {1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
+		glm::vec3 position;
+		glm::vec2 texCoords;
+	};
+
+	const std::vector<Vertex> verticesQuad =
+	{
+		{{-0.5f, 0.0f, 0.5f}, {0.0f, 0.0f}},
+		{{ 0.5f, 0.0f, 0.5f}, {1.0f, 0.0f}},
+		{{ 0.5f, 0.0f,-0.5f}, {1.0f, 1.0f}},
+		{{-0.5f, 0.0f,-0.5f}, {0.0f, 1.0f}},
 	};
 	const std::vector<uint8_t> indicesQuad =
 	{
 		0, 1, 2, 2, 3, 0,
 	};
-	GLVertexArrayRef quadGeom{ new GLVertexArray(verticesQuad, indicesQuad, GetMeshVertexFormat()) };
+
+	const std::vector<AttribFormat> attribs =
+	{
+		CreateAttribFormat<glm::vec3>(0, offsetof(Vertex, position)),
+		CreateAttribFormat<glm::vec2>(1, offsetof(Vertex, texCoords)),
+	};
+	GLVertexArrayRef quadGeom{ new GLVertexArray(verticesQuad, indicesQuad, attribs) };
 
 #pragma region VertexShader
 	const char* mainVertSource = // Vertex Shader:
@@ -39,9 +51,7 @@ out gl_PerVertex { vec4 gl_Position; };
 out vec2 uvs;
 
 layout (location = 0) in vec3 aPosition;
-//layout (location = 1) in vec3 aColor;
-//layout (location = 2) in vec3 aNormal;
-layout (location = 3) in vec2 aTexCoords;
+layout (location = 1) in vec2 aTexCoords;
 
 layout (location = 0) uniform mat4 uProjectionMatrix;
 layout (location = 1) uniform mat4 uViewMatrix;

@@ -6,7 +6,7 @@
 
 void Example00X()
 {
-	Window::Create("Game", 1600, 900);
+	Window::Create({});
 	Renderer::Init();
 	IMGUI::Init();
 

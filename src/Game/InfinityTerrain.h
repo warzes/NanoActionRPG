@@ -118,7 +118,7 @@ void main()
 
 void InfinityTerrain()
 {
-	Window::Create("Game", 1024, 768);
+	Window::Create({});
 	Renderer::Init();
 	IMGUI::Init();
 

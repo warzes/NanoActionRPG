@@ -14,15 +14,17 @@
 // GPU Config
 //==============================================================================
 #pragma region GPU Config
-// Use discrete GPU by default.
+// Use the high-performance GPU (if available) on Windows laptops
+// https://docs.nvidia.com/gameworks/content/technologies/desktop/optimus.htm
+// https://gpuopen.com/learn/amdpowerxpressrequesthighperformance/
+#ifdef _WIN32
 extern "C"
 {
-	// http://developer.download.nvidia.com/devzone/devcenter/gamegraphics/files/OptimusRenderingPolicies.pdf
-	__declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
-
-	// https://gpuopen.com/learn/amdpowerxpressrequesthighperformance/
-	__declspec(dllexport) unsigned long AmdPowerXpressRequestHighPerformance = 0x00000001;
+	__declspec(dllexport) unsigned long NvOptimusEnablement = 1;
+	__declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 }
+#endif
+
 #pragma endregion
 
 //==============================================================================
@@ -34,8 +36,8 @@ namespace
 	struct
 	{
 		GLFWwindow* window = nullptr;
-		int windowWidth = 0;
-		int windowHeight = 0;
+		uint32_t windowWidth = 0;
+		uint32_t windowHeight = 0;
 		bool IsResize = false;
 		bool IsEnd = false;
 	} Engine;
@@ -161,23 +163,23 @@ const std::pair<GLenum, GLenum> STBImageToOpenGLFormat(int comp)
 	}
 }
 
-std::string LoadShaderTextFile(const std::string& filePath)
+std::string LoadShaderTextFile(const std::filesystem::path& path)
 {
-	if (!std::filesystem::exists(filePath))
+	if (!std::filesystem::exists(path))
 	{
-		Error("File '" + filePath + "' does not exist.");
+		Error("File '" + path.string() + "' does not exist.");
 		return "";
 	}
 
 	const char whitespace = ' ';
 	const std::string includeIdentifier = "#include "; // TODO: проверять что в include используются кавычки или нет
-	const std::string rootFolder = std::filesystem::absolute(filePath).parent_path().string() + "/";
+	const std::string rootFolder = std::filesystem::absolute(path).parent_path().string() + "/";
 
 	std::string shaderCode = "";
-	std::ifstream file(filePath);
+	std::ifstream file(path);
 	if (!file.is_open())
 	{
-		Error("Failed to load shader file " + std::string(filePath));
+		Error("Failed to load shader file " + path.string());
 		return "";
 	}
 
@@ -851,15 +853,24 @@ void GLFramebuffer::setTextures(const std::vector<GLTexture2DRef>& colors, GLTex
 #pragma region Renderer
 
 #if defined(_DEBUG)
-void APIENTRY glDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei /*length*/, const GLchar* message, const void* /*user_param*/) noexcept
+void GLAPIENTRY glDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, [[maybe_unused]] GLsizei length, const GLchar* message, [[maybe_unused]] const void* userParam) noexcept
 {
 	// ignore non-significant error/warning codes
-	if (id == 131169 || id == 131185 || id == 131218 || id == 131204) return;
+	if (id == 131169 ||
+		id == 131185 || // NV: Buffer will use video memory
+		id == 131218 ||
+		id == 131204 || // Texture cannot be used for texture mapping
+		id == 131222 ||
+		id == 131154 || // NV: pixel transfer is synchronized with 3D rendering
+		id == 0         // gl{Push, Pop}DebugGroup
+		)
+		return;
 
 	std::string msgSource;
 	switch (source)
 	{
 	case GL_DEBUG_SOURCE_API:             msgSource = "GL_DEBUG_SOURCE_API";             break;
+	case GL_DEBUG_SOURCE_WINDOW_SYSTEM:   msgSource = "GL_DEBUG_SOURCE_WINDOW_SYSTEM";   break;
 	case GL_DEBUG_SOURCE_SHADER_COMPILER: msgSource = "GL_DEBUG_SOURCE_SHADER_COMPILER"; break;
 	case GL_DEBUG_SOURCE_THIRD_PARTY:     msgSource = "GL_DEBUG_SOURCE_THIRD_PARTY";     break;
 	case GL_DEBUG_SOURCE_APPLICATION:     msgSource = "GL_DEBUG_SOURCE_APPLICATION";     break;
@@ -874,15 +885,19 @@ void APIENTRY glDebugCallback(GLenum source, GLenum type, GLuint id, GLenum seve
 	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:  msgType = "GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR";  break;
 	case GL_DEBUG_TYPE_PORTABILITY:         msgType = "GL_DEBUG_TYPE_PORTABILITY";         break;
 	case GL_DEBUG_TYPE_PERFORMANCE:         msgType = "GL_DEBUG_TYPE_PERFORMANCE";         break;
+	case GL_DEBUG_TYPE_MARKER:              msgType = "GL_DEBUG_TYPE_MARKER";              break;
+	case GL_DEBUG_TYPE_PUSH_GROUP:          msgType = "GL_DEBUG_TYPE_PUSH_GROUP";          break;
+	case GL_DEBUG_TYPE_POP_GROUP:           msgType = "GL_DEBUG_TYPE_POP_GROUP";           break;
 	case GL_DEBUG_TYPE_OTHER:               msgType = "GL_DEBUG_TYPE_OTHER";               break;
 	}
 
 	std::string msgSeverity = "DEFAULT";
 	switch (severity)
 	{
-	case GL_DEBUG_SEVERITY_LOW:    msgSeverity = "GL_DEBUG_SEVERITY_LOW";    break;
-	case GL_DEBUG_SEVERITY_MEDIUM: msgSeverity = "GL_DEBUG_SEVERITY_MEDIUM"; break;
-	case GL_DEBUG_SEVERITY_HIGH:   msgSeverity = "GL_DEBUG_SEVERITY_HIGH";   break;
+	case GL_DEBUG_SEVERITY_LOW:          msgSeverity = "GL_DEBUG_SEVERITY_LOW";          break;
+	case GL_DEBUG_SEVERITY_MEDIUM:       msgSeverity = "GL_DEBUG_SEVERITY_MEDIUM";       break;
+	case GL_DEBUG_SEVERITY_HIGH:         msgSeverity = "GL_DEBUG_SEVERITY_HIGH";         break;
+	case GL_DEBUG_SEVERITY_NOTIFICATION: msgSeverity = "GL_DEBUG_SEVERITY_NOTIFICATION"; break;
 	}
 
 	std::string logMsg = "glDebugMessage: " + std::string(message) + ", type = " + msgType + ", source = " + msgSource + ", severity = " + msgSeverity;
@@ -2100,7 +2115,7 @@ void Camera::update()
 //==============================================================================
 #pragma region Window
 
-void framesizeCallback(GLFWwindow* /*window*/, int width, int height) noexcept
+static void framesizeCallback([[maybe_unused]] GLFWwindow* window, int width, int height) noexcept
 {
 	width = std::max(width, 1);
 	height = std::max(height, 1);
@@ -2112,35 +2127,74 @@ void framesizeCallback(GLFWwindow* /*window*/, int width, int height) noexcept
 	Engine.windowHeight = height;
 }
 
-void mouseCallback(GLFWwindow* /*window*/, double xPosIn, double yPosIn) noexcept
+static void mouseCallback([[maybe_unused]] GLFWwindow* window, double xPosIn, double yPosIn) noexcept
 {
 	MouseState.position = glm::ivec2{ xPosIn,yPosIn };
 }
 
-bool Window::Create(const char* title, int width, int height)
+bool Window::Create(const WindowCreateInfo& createInfo)
 {
-	glfwInit();
-	glfwWindowHint(GLFW_SAMPLES, 1);
+	if (!glfwInit())
+	{
+		Fatal("Failed to initialize GLFW");
+		return false;
+	}
+	glfwSetErrorCallback([](int, const char* desc) { Fatal("GLFW error: " + std::string(desc)); });
+
 #if defined(_DEBUG)
-	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
+	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 #endif
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
+	glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
+	glfwWindowHint(GLFW_MAXIMIZED, createInfo.maximize);
+	glfwWindowHint(GLFW_DECORATED, createInfo.decorate);
 
-	Engine.window = glfwCreateWindow(width, height, title, nullptr, nullptr);
-	glfwGetFramebufferSize(Engine.window, &Engine.windowWidth, &Engine.windowHeight);
+	GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+	if (monitor == nullptr)
+	{
+		Fatal("No Monitor detected");
+		return false;
+	}
+	const GLFWvidmode* videoMode = glfwGetVideoMode(monitor);
+
+	Engine.window = glfwCreateWindow(createInfo.width, createInfo.height, createInfo.title.data(), nullptr, nullptr);
+	if (!Engine.window)
+	{
+		Fatal("Failed to create window");
+		return false;
+	}
+
+	int xSize{};
+	int ySize{};
+	glfwGetFramebufferSize(Engine.window, &xSize, &ySize);
+	Engine.windowWidth = static_cast<uint32_t>(xSize);
+	Engine.windowHeight = static_cast<uint32_t>(ySize);
+
+	int monitorLeft{};
+	int monitorTop{};
+	glfwGetMonitorPos(monitor, &monitorLeft, &monitorTop);
+
+	glfwSetWindowPos(Engine.window, videoMode->width / 2 - Engine.windowWidth / 2 + monitorLeft, videoMode->height / 2 - Engine.windowHeight / 2 + monitorTop);
 
 	glfwMakeContextCurrent(Engine.window);
-	glfwSwapInterval(0);
+	glfwSwapInterval(createInfo.vsync ? 1 : 0);
 
 	glfwSetInputMode(Engine.window, GLFW_STICKY_KEYS, GLFW_TRUE); // сохраняет событие клавиши до его опроса через glfwGetKey()
 	glfwSetInputMode(Engine.window, GLFW_STICKY_MOUSE_BUTTONS, GLFW_TRUE); // сохраняет событие кнопки мыши до его опроса через glfwGetMouseButton()
 
 	glfwSetCursorPosCallback(Engine.window, mouseCallback);
+	//glfwSetCursorEnterCallback(Engine.window, cursorEnterCallback);
 	glfwSetFramebufferSizeCallback(Engine.window, framesizeCallback);
 
-	gladLoadGL(glfwGetProcAddress);
+	int version = gladLoadGL(glfwGetProcAddress);
+	if (version < GLAD_MAKE_VERSION(4, 6))
+	{
+		Fatal("Failed to initialize OpenGL");
+		return false;
+	}
 
 	MouseState.lastPosition = MouseState.position = Mouse::GetPosition();
 

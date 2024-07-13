@@ -277,7 +277,7 @@ constexpr inline AttribFormat CreateAttribFormat(GLuint attribIndex, GLuint rela
 
 const std::pair<GLenum, GLenum> STBImageToOpenGLFormat(int comp);
 
-std::string LoadShaderTextFile(const std::string& fileName);
+std::string LoadShaderTextFile(const std::filesystem::path& path);
 
 #pragma endregion
 
@@ -953,9 +953,20 @@ private:
 //==============================================================================
 #pragma region Window
 
+struct WindowCreateInfo final
+{
+	std::string_view title = "Game";
+	int width = 1600;
+	int height = 900;
+
+	bool maximize = false;
+	bool decorate = true;
+	bool vsync = true;
+};
+
 namespace Window
 {
-	bool Create(const char* title, int width, int height);
+	bool Create(const WindowCreateInfo& createInfo);
 	void Destroy();
 
 	bool ShouldClose();

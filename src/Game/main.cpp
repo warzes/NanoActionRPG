@@ -121,8 +121,8 @@ int main(
 	[[maybe_unused]] char* argv[])
 {
 
-	//Example001();
-	Example002();
+	Example001();
+	//Example002();
 
 	//Example002();
 	//Example003();
@@ -141,7 +141,7 @@ int main(
 		cleanupPhysics(false);
 	}
 
-	Window::Create("Game", 1024, 768);
+	Window::Create({});
 	Renderer::Init();
 	IMGUI::Init();
 
