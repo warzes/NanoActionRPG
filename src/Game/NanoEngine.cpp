@@ -1192,6 +1192,11 @@ void Renderer::Close()
 {
 }
 
+const Renderer::DeviceProperties& Renderer::GetDeviceProperties()
+{
+	return Render.properties;
+}
+
 void Renderer::MainFrameBuffer()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
