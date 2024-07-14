@@ -45,6 +45,7 @@ int GLAD_GL_VERSION_4_6 = 0;
 int GLAD_GL_AMD_debug_output = 0;
 int GLAD_GL_ARB_bindless_texture = 0;
 int GLAD_GL_EXT_texture_compression_s3tc = 0;
+int GLAD_GL_KHR_shader_subgroup = 0;
 
 
 
@@ -1569,6 +1570,7 @@ static int glad_gl_find_extensions_gl(void) {
     GLAD_GL_AMD_debug_output = glad_gl_has_extension(exts, exts_i, "GL_AMD_debug_output");
     GLAD_GL_ARB_bindless_texture = glad_gl_has_extension(exts, exts_i, "GL_ARB_bindless_texture");
     GLAD_GL_EXT_texture_compression_s3tc = glad_gl_has_extension(exts, exts_i, "GL_EXT_texture_compression_s3tc");
+    GLAD_GL_KHR_shader_subgroup = glad_gl_has_extension(exts, exts_i, "GL_KHR_shader_subgroup");
 
     glad_gl_free_extensions(exts_i);
 
