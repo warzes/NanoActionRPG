@@ -151,6 +151,27 @@ void Fatal(const std::string& text)
 //==============================================================================
 #pragma region Render Core
 
+GLbitfield BufferStorageFlagsToGL(BufferStorageFlags flags)
+{
+	GLbitfield ret = 0;
+	ret |= flags & BufferStorageFlag::DYNAMIC_STORAGE ? GL_DYNAMIC_STORAGE_BIT : 0;
+	ret |= flags & BufferStorageFlag::CLIENT_STORAGE ? GL_CLIENT_STORAGE_BIT : 0;
+
+	if (flags & BufferStorageFlag::MAP_MEMORY)
+	{
+		ret |= GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+	}
+	else
+	{
+		ret |= flags & BufferStorageFlag::MAP_READ ? GL_MAP_READ_BIT : 0;
+		ret |= flags & BufferStorageFlag::MAP_WRITE ? GL_MAP_WRITE_BIT : 0;
+		ret |= flags & BufferStorageFlag::MAP_PERSISTENT ? GL_MAP_PERSISTENT_BIT : 0;
+		ret |= flags & BufferStorageFlag::MAP_COHERENT ? GL_MAP_COHERENT_BIT : 0;
+	}
+	
+	return ret;
+}
+
 const std::pair<GLenum, GLenum> STBImageToOpenGLFormat(int comp)
 {
 	switch (comp)
@@ -209,6 +230,111 @@ std::string LoadShaderTextFile(const std::filesystem::path& path)
 // Render Resources
 //==============================================================================
 #pragma region Render Resources
+
+#pragma region GPUBuffer
+
+GPUBuffer::GPUBuffer(size_t size, BufferStorageFlags storageFlags, std::string_view name)
+	: GPUBuffer(nullptr, size, storageFlags, name)
+{
+}
+
+GPUBuffer::GPUBuffer(CopyableByteSpan data, BufferStorageFlags storageFlags, std::string_view name)
+	: GPUBuffer(data.data(), data.size_bytes(), storageFlags, name)
+{
+}
+
+GPUBuffer::GPUBuffer(const void* data, size_t sizeBytes, BufferStorageFlags storageFlags, std::string_view name)
+	: m_sizeBytes(RoundUp(sizeBytes, 16)), m_storageFlags(storageFlags)
+{
+	const GLbitfield glflags = BufferStorageFlagsToGL(storageFlags);
+	glCreateBuffers(1, &m_handle);
+	glNamedBufferStorage(m_handle, m_sizeBytes, data, glflags);
+	if (storageFlags & BufferStorageFlag::MAP_MEMORY)
+	{
+		// GL_MAP_UNSYNCHRONIZED_BIT should be used if the user can map and unmap buffers at their own will
+		constexpr GLenum access = GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+		m_mappedMemory = glMapNamedBufferRange(m_handle, 0, m_sizeBytes, access);
+	}
+	if (!name.empty())
+	{
+		glObjectLabel(GL_BUFFER, m_handle, static_cast<GLsizei>(name.length()), name.data());
+	}
+}
+
+GPUBuffer::GPUBuffer(GPUBuffer&& old) noexcept
+	: m_sizeBytes(std::exchange(old.m_sizeBytes, 0))
+	, m_storageFlags(std::exchange(old.m_storageFlags, BufferStorageFlag::NONE))
+	, m_handle(std::exchange(old.m_handle, 0))
+	, m_mappedMemory(std::exchange(old.m_mappedMemory, nullptr))
+{
+}
+
+GPUBuffer::~GPUBuffer()
+{
+	if (m_handle != 0)
+	{
+		UnmapMemory();
+		glDeleteBuffers(1, &m_handle);
+	}
+
+	m_handle = 0;
+}
+
+GPUBuffer& GPUBuffer::operator=(GPUBuffer&& old) noexcept
+{
+	if (&old == this)
+		return *this;
+	this->~GPUBuffer();
+	return *new (this) GPUBuffer(std::move(old));
+}
+
+void GPUBuffer::UpdateData(CopyableByteSpan data, GLuint destOffsetBytes)
+{
+	updateData(data.data(), static_cast<GLuint>(data.size_bytes()), destOffsetBytes);
+}
+
+void GPUBuffer::FillData(uint64_t offset, uint64_t sizeBytes, uint32_t data)
+{
+	const auto actualSize = sizeBytes == WHOLE_BUFFER ? m_sizeBytes : sizeBytes;
+	assert(actualSize % 4 == 0 && "Size must be a multiple of 4 bytes");
+	glClearNamedBufferSubData(m_handle,
+		GL_R32UI,
+		offset,
+		actualSize,
+		GL_RED_INTEGER,
+		GL_UNSIGNED_INT,
+		&data);
+}
+
+void* GPUBuffer::MapMemory(const GLenum access) noexcept
+{
+	return MapMemory(access, 0, m_sizeBytes);
+}
+
+void* GPUBuffer::MapMemory(const GLenum access, size_t offset, size_t length) noexcept
+{
+	UnmapMemory();
+	m_mappedMemory = glMapNamedBufferRange(m_handle, offset, length, access);
+	return m_mappedMemory;
+}
+
+void GPUBuffer::UnmapMemory()
+{
+	if (m_mappedMemory)
+	{
+		glUnmapNamedBuffer(m_handle);
+		m_mappedMemory = nullptr;
+	}
+}
+
+void GPUBuffer::updateData(const void* data, GLuint size, GLuint offset)
+{
+	assert((m_storageFlags & BufferStorageFlag::DYNAMIC_STORAGE) && "UpdateData can only be called on buffers created with the DYNAMIC_STORAGE flag");
+	assert(size + offset <= GetSize());
+	glNamedBufferSubData(m_handle, offset, size, data);
+}
+
+#pragma endregion
 
 #pragma region GLSeparableShaderProgram
 

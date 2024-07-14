@@ -96,9 +96,109 @@ Left handed
 #pragma endregion
 
 //==============================================================================
-// CORE
+// Base Macros
+//==============================================================================
+#pragma region Base Macros
+
+#define BITMASK64_POW2(offset) (1ull << (offset))
+#define BITMASK_POW2(offset)   (1 << (offset))
+
+#pragma region DECLARE_FLAG_TYPE
+
+#define DECLARE_FLAG_TYPE(FLAG_TYPE, FLAG_BITS, BASE_TYPE)                                \
+  struct FLAG_TYPE final                                                                  \
+  {                                                                                       \
+    BASE_TYPE flags = static_cast<BASE_TYPE>(0);                                          \
+                                                                                          \
+    constexpr FLAG_TYPE() noexcept = default;                                             \
+    constexpr explicit FLAG_TYPE(BASE_TYPE in) noexcept : flags(in) {}                    \
+    constexpr FLAG_TYPE(FLAG_BITS in) noexcept : flags(static_cast<BASE_TYPE>(in)) {}     \
+    constexpr bool operator==(FLAG_TYPE const& right) const                               \
+    {                                                                                     \
+      return flags == right.flags;                                                        \
+    }                                                                                     \
+    constexpr bool operator!=(FLAG_TYPE const& right) const                               \
+    {                                                                                     \
+      return flags != right.flags;                                                        \
+    }                                                                                     \
+    constexpr explicit operator BASE_TYPE() const                                         \
+    {                                                                                     \
+      return flags;                                                                       \
+    }                                                                                     \
+    constexpr explicit operator bool() const noexcept                                     \
+    {                                                                                     \
+      return flags != 0;                                                                  \
+    }                                                                                     \
+  };                                                                                      \
+  constexpr FLAG_TYPE operator|(FLAG_TYPE a, FLAG_TYPE b) noexcept                        \
+  {                                                                                       \
+    return static_cast<FLAG_TYPE>(a.flags | b.flags);                                     \
+  }                                                                                       \
+  constexpr FLAG_TYPE operator&(FLAG_TYPE a, FLAG_TYPE b) noexcept                        \
+  {                                                                                       \
+    return static_cast<FLAG_TYPE>(a.flags & b.flags);                                     \
+  }                                                                                       \
+  constexpr FLAG_TYPE operator^(FLAG_TYPE a, FLAG_TYPE b) noexcept                        \
+  {                                                                                       \
+    return static_cast<FLAG_TYPE>(a.flags ^ b.flags);                                     \
+  }                                                                                       \
+  constexpr FLAG_TYPE operator~(FLAG_TYPE a) noexcept                                     \
+  {                                                                                       \
+    return static_cast<FLAG_TYPE>(~a.flags);                                              \
+  }                                                                                       \
+  constexpr FLAG_TYPE& operator|=(FLAG_TYPE& a, FLAG_TYPE b) noexcept                     \
+  {                                                                                       \
+    a.flags = (a.flags | b.flags);                                                        \
+    return a;                                                                             \
+  }                                                                                       \
+  constexpr FLAG_TYPE& operator&=(FLAG_TYPE& a, FLAG_TYPE b) noexcept                     \
+  {                                                                                       \
+    a.flags = (a.flags & b.flags);                                                        \
+    return a;                                                                             \
+  }                                                                                       \
+  constexpr FLAG_TYPE operator^=(FLAG_TYPE& a, FLAG_TYPE b) noexcept                      \
+  {                                                                                       \
+    a.flags = (a.flags ^ b.flags);                                                        \
+    return a;                                                                             \
+  }                                                                                       \
+  constexpr FLAG_TYPE operator|(FLAG_BITS a, FLAG_BITS b) noexcept                        \
+  {                                                                                       \
+    return static_cast<FLAG_TYPE>(static_cast<BASE_TYPE>(a) | static_cast<BASE_TYPE>(b)); \
+  }                                                                                       \
+  constexpr FLAG_TYPE operator&(FLAG_BITS a, FLAG_BITS b) noexcept                        \
+  {                                                                                       \
+    return static_cast<FLAG_TYPE>(static_cast<BASE_TYPE>(a) & static_cast<BASE_TYPE>(b)); \
+  }                                                                                       \
+  constexpr FLAG_TYPE operator~(FLAG_BITS key) noexcept                                   \
+  {                                                                                       \
+    return static_cast<FLAG_TYPE>(~static_cast<BASE_TYPE>(key));                          \
+  }                                                                                       \
+  constexpr FLAG_TYPE operator^(FLAG_BITS a, FLAG_BITS b) noexcept                        \
+  {                                                                                       \
+    return static_cast<FLAG_TYPE>(static_cast<BASE_TYPE>(a) ^ static_cast<BASE_TYPE>(b)); \
+  }
+
+#pragma endregion
+
+#pragma endregion
+
+//==============================================================================
+// Core
 //==============================================================================
 #pragma region Core
+
+class CopyableByteSpan : public std::span<const std::byte>
+{
+public:
+	template<typename T> requires std::is_trivially_copyable_v<T>
+	CopyableByteSpan(const T& t) : std::span<const std::byte>(std::as_bytes(std::span{ &t, static_cast<size_t>(1) })) {}
+
+	template<typename T> requires std::is_trivially_copyable_v<T>
+	CopyableByteSpan(std::span<const T> t) : std::span<const std::byte>(std::as_bytes(t)) {}
+
+	template<typename T> requires std::is_trivially_copyable_v<T>
+	CopyableByteSpan(std::span<T> t) : std::span<const std::byte>(std::as_bytes(t)) {}
+};
 
 class Time final
 {
@@ -151,8 +251,13 @@ void Fatal(const std::string& text);
 
 //==============================================================================
 // Math
-//==============================================================================
 #pragma region Math
+
+[[nodiscard]] constexpr size_t RoundUp(size_t numberToRoundUp, size_t multipleOf)
+{
+	assert(multipleOf);
+	return ((numberToRoundUp + multipleOf - 1) / multipleOf) * multipleOf;
+}
 
 [[nodiscard]] inline int NumMipmap(int width, int height)
 {
@@ -254,6 +359,34 @@ private:
 //==============================================================================
 #pragma region Render Core
 
+constexpr inline uint64_t WHOLE_BUFFER = static_cast<uint64_t>(-1);
+
+enum class BufferStorageFlag : uint32_t
+{
+	NONE = 0,
+	// Allows the user to update the buffer's contents with GPUBuffer::UpdateData
+	DYNAMIC_STORAGE = BITMASK_POW2(0),
+	// Hints to the implementation to place the buffer storage in host memory
+	CLIENT_STORAGE = BITMASK_POW2(1),
+
+	// Memory will be mapped for reading
+	MAP_READ = BITMASK_POW2(2),
+	// Memory will be mapped for writing outside of the API copy calls
+	MAP_WRITE = BITMASK_POW2(3),
+	// Memory will be mapped and continuously read from and written to without unmapping
+	MAP_PERSISTENT = BITMASK_POW2(4),
+	// Memory writes between client and server will be seen
+	MAP_COHERENT = BITMASK_POW2(5),
+
+	// Maps the buffer (persistently and coherently) upon creation
+	// Combines previous map modifiers
+	MAP_MEMORY = BITMASK_POW2(6),
+
+};
+DECLARE_FLAG_TYPE(BufferStorageFlags, BufferStorageFlag, uint32_t)
+
+GLbitfield BufferStorageFlagsToGL(BufferStorageFlags flags);
+
 enum class IndexFormat : uint8_t
 {
 	UInt8,
@@ -285,6 +418,47 @@ std::string LoadShaderTextFile(const std::filesystem::path& path);
 // Render Resources
 //==============================================================================
 #pragma region Render Resources
+
+class GPUBuffer final
+{
+public:
+	GPUBuffer() = delete;
+	explicit GPUBuffer(size_t sizeBytes, BufferStorageFlags storageFlags = BufferStorageFlag::NONE, std::string_view name = "");
+	explicit GPUBuffer(CopyableByteSpan data, BufferStorageFlags storageFlags = BufferStorageFlag::NONE, std::string_view name = "");
+	GPUBuffer(GPUBuffer&& old) noexcept;
+	GPUBuffer(const GPUBuffer&) = delete;
+	~GPUBuffer();
+
+	GPUBuffer& operator=(GPUBuffer&& old) noexcept;
+	GPUBuffer& operator=(const GPUBuffer&) = delete;
+
+	void UpdateData(CopyableByteSpan data, GLuint destOffsetBytes = 0);
+	void FillData(uint64_t offset = 0, uint64_t sizeBytes = WHOLE_BUFFER, uint32_t data = 0);
+
+	// Maps the GPU memory into system memory - make sure READ, WRITE, or PERSISTENT mapping is enabled
+	[[nodiscard]] void* MapMemory(const GLenum access) noexcept;
+	[[nodiscard]] void* MapMemory(const GLenum access, size_t offset, size_t length) noexcept;
+	void UnmapMemory();
+
+	// A pointer to mapped memory if the buffer was created with BufferStorageFlag::MAP_MEMORY, otherwise nullptr
+	[[nodiscard]] void* GetMappedPointer() noexcept { return m_mappedMemory; }
+	[[nodiscard]] const void* GetMappedPointer() const noexcept { return m_mappedMemory; }
+
+	[[nodiscard]] operator GLuint() const noexcept { return m_handle; }
+	[[nodiscard]] bool IsValid() const noexcept { return m_handle != 0; }
+	[[nodiscard]] auto GetSize() const noexcept { return m_sizeBytes; }
+	[[nodiscard]] bool IsMapped() const noexcept { return m_mappedMemory != nullptr; }
+
+private:
+	GPUBuffer(const void* data, size_t sizeBytes, BufferStorageFlags storageFlags, std::string_view name);
+	void updateData(const void* data, GLuint sizeBytes, GLuint offset = 0);
+
+	GLuint m_handle = 0;
+	size_t m_sizeBytes = 0;
+	BufferStorageFlags m_storageFlags{};
+	void* m_mappedMemory{};
+};
+using GPUBufferRef = std::shared_ptr<GPUBuffer>;
 
 // ref ARB_separate_shader_objects 
 class GLSeparableShaderProgram final
